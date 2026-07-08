@@ -1,0 +1,115 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUserVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.email == 'belmonte.enrico@gmail.com' || request.auth.token.email == 'belmonte@fs-kuechen.de' || request.auth.token.email == 'admin@fs-kuechen.de');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin(appId) {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/artifacts/$(appId)/public/data/users/$(request.auth.uid)) &&
+        (get(/databases/$(database)/documents/artifacts/$(appId)/public/data/users/$(request.auth.uid)).data.role == 'admin' ||
+         get(/databases/$(database)/documents/artifacts/$(appId)/public/data/users/$(request.auth.uid)).data.role == 'sys-admin');
+    }
+
+    // Settings Collection Rule matching blueprint path: /artifacts/{appId}/public/data/settings/active
+    match /artifacts/{appId}/public/data/settings/active {
+      
+      function isValidSettings(data) {
+        return data.keys().hasAll(['stones', 'config', 'updated', 'editor'])
+          && data.keys().size() >= 4
+          && data.keys().size() <= 5
+          && data.updated is int
+          && data.editor is string
+          && data.editor == request.auth.uid
+          && (!data.keys().hasAny(['customFolders']) || data.customFolders is list);
+      }
+
+      allow read: if isSignedIn();
+      allow create, update: if isUserVerified() 
+        && isValidId(appId)
+        && isValidSettings(request.resource.data);
+      allow delete: if false;
+    }
+
+    // Offers Collection Rule matching blueprint path: /artifacts/{appId}/public/data/offers/{offerId}
+    match /artifacts/{appId}/public/data/offers/{offerId} {
+      
+      function isValidOffer(data) {
+        return data.keys().hasAll(['id', 'kunde', 'timestamp', 'totalVK', 'kitchen'])
+          && data.id is string
+          && data.kunde is string
+          && data.kunde.size() <= 200
+          && data.timestamp is int
+          && data.totalVK is number
+          && data.kitchen is map;
+      }
+
+      allow read: if isSignedIn() && (
+        resource == null ||
+        resource.data.editor == request.auth.uid ||
+        isAdmin(appId)
+      );
+      allow create, update: if isUserVerified()
+        && isValidId(appId)
+        && isValidId(offerId)
+        && isValidOffer(request.resource.data)
+        && (
+          request.resource.data.editor == request.auth.uid ||
+          isAdmin(appId)
+        );
+      allow delete: if isUserVerified()
+        && isValidId(appId)
+        && isValidId(offerId)
+        && (
+          resource.data.editor == request.auth.uid ||
+          isAdmin(appId)
+        );
+    }
+
+    // Users Collection Rule matching blueprint path: /artifacts/{appId}/public/data/users/{userId}
+    match /artifacts/{appId}/public/data/users/{userId} {
+      
+      function isValidUser(data) {
+        return data.keys().hasAll(['id', 'email', 'name', 'role', 'createdAt'])
+          && data.id is string
+          && data.email is string
+          && data.name is string
+          && data.role is string
+          && (data.role == 'sys-admin' || data.role == 'admin' || data.role == 'berater')
+          && data.createdAt is int;
+      }
+
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && (
+        // User updating or creating their own profile
+        (request.auth.uid == userId && isValidUser(request.resource.data) && (
+          // Non-admins cannot elevate themselves to admin or sys-admin
+          request.resource.data.role == 'berater' || 
+          (resource != null && (resource.data.role == 'admin' || resource.data.role == 'sys-admin')) || 
+          request.auth.token.email == 'belmonte.enrico@gmail.com' ||
+          request.auth.token.email == 'belmonte@fs-kuechen.de' ||
+          request.auth.token.email == 'admin@fs-kuechen.de'
+        )) ||
+        // Admin can create/update anything
+        isAdmin(appId)
+      );
+      allow delete: if isSignedIn() && isAdmin(appId);
+    }
+  }
+}

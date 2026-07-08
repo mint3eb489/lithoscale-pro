@@ -1,0 +1,32 @@
+import { Stone } from '../types';
+
+export const DEFAULT_STONES: Omit<Stone, "id">[] = [
+  { name: "Marinace Black 2cm", price: 325, isDekton: false, image: "" },
+  { name: "Morpheus", price: 652, isDekton: true, image: "" },
+  { name: "Steel Grey 226", price: 226, isDekton: false, image: "" },
+  { name: "Laurent", price: 456, isDekton: true, image: "" },
+  { name: "Kairos", price: 384, isDekton: true, image: "" },
+  { name: "Domoos", price: 576, isDekton: true, image: "" },
+  { name: "Café Imperial", price: 275, isDekton: false, image: "" },
+  { name: "Breccia Imperiale", price: 395, isDekton: false, image: "" },
+  { name: "Albarium", price: 576, isDekton: true, image: "" },
+  { name: "Sandik", price: 576, isDekton: true, image: "" },
+  { name: "Adia", price: 576, isDekton: true, image: "" },
+  { name: "Opera", price: 641, isDekton: true, image: "" },
+  { name: "Reverie", price: 641, isDekton: true, image: "" },
+  { name: "Via Lattea", price: 275, isDekton: false, image: "" },
+  { name: "Lunar 22", price: 379, isDekton: true, image: "" },
+  { name: "Tropical Storm", price: 395, isDekton: false, image: "" },
+  { name: "Entzo", price: 641, isDekton: true, image: "" },
+  { name: "Sirius PROMO", price: 380, isDekton: true, image: "" },
+  { name: "Eter PROMO", price: 360, isDekton: true, image: "" },
+  { name: "Danae", price: 384, isDekton: true, image: "" },
+  { name: "Aeris", price: 384, isDekton: true, image: "" },
+  { name: "REM PROMO", price: 465, isDekton: true, image: "" },
+  { name: "Mont Blanc 542 poliert", price: 542, isDekton: false, image: "" },
+  { name: "Sasea PG1", price: 495, isDekton: true, image: "" },
+  { name: "Nacre PG1", price: 495, isDekton: true, image: "" },
+  { name: "Taj Mahal poliert Südamerika", price: 495, isDekton: false, image: "" },
+  { name: "Arga Stonika PG4", price: 750, isDekton: true, image: "" },
+  { name: "Nero Assoluto", price: 245, isDekton: false, image: "" }
+];

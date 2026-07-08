@@ -1,0 +1,6 @@
+{
+  "name": "LithoScale PRO",
+  "description": "Bequeme Steinkalkulations- und Küchendesign-Vergütung für Ihr Team. Einfache Erfassung von Zuschnitten, Kanten und Zubehör, inklusive PDF-Angebotserstellung und Excel-CARAT-Import.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

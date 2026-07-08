@@ -1,0 +1,77 @@
+{
+  "entities": {
+    "Settings": {
+      "title": "Settings",
+      "description": "Team application settings and material catalog",
+      "type": "object",
+      "properties": {
+        "stones": {
+          "type": "array",
+          "description": "List of available stone materials"
+        },
+        "config": {
+          "type": "object",
+          "description": "Calculation factors, margins, and layout texts"
+        },
+        "updated": {
+          "type": "integer",
+          "description": "Timestamp of the last modification"
+        },
+        "editor": {
+          "type": "string",
+          "description": "UID of the user who made the edit"
+        },
+        "customFolders": {
+          "type": "array",
+          "description": "Custom project folders created by users"
+        }
+      },
+      "required": ["stones", "config", "updated"]
+    },
+    "Offer": {
+      "title": "Offer",
+      "description": "Team generated kitchen offers and slab calculations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "kunde": { "type": "string" },
+        "beraterId": { "type": "string" },
+        "timestamp": { "type": "integer" },
+        "totalVK": { "type": "number" },
+        "kitchen": { "type": "object" },
+        "parts": { "type": "array" },
+        "stoneId": { "type": "string" },
+        "editor": { "type": "string" }
+      },
+      "required": ["id", "kunde", "timestamp", "totalVK", "kitchen"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with role-based permissions and custom statistics",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "berater"] },
+        "createdAt": { "type": "integer" },
+        "stats": { "type": "object" }
+      },
+      "required": ["id", "email", "name", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/artifacts/{appId}/public/data/settings/active": {
+      "schema": "Settings",
+      "description": "The current active team settings"
+    },
+    "/artifacts/{appId}/public/data/offers/{offerId}": {
+      "schema": "Offer",
+      "description": "Created customer kitchen offers"
+    },
+    "/artifacts/{appId}/public/data/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Registered and pre-registered system users"
+    }
+  }
+}
