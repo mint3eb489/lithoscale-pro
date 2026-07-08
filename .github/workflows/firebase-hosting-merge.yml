@@ -35,5 +35,5 @@ jobs:
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GEN_LANG_CLIENT_0447110538 }}
-          projectId: gen-lang-client-0447110538
+          projectId: lithoscalepro
           channelId: live
