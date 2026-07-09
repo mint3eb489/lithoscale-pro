@@ -154,11 +154,21 @@ export async function generateKitchenPDF(
     const beraterObj = (config.beraterList || []).find((b) => String(b.id) === String(k.beraterId));
     let beraterBlock: any = { text: '', margin: [0, 0, 0, 0] };
     if (beraterObj && beraterObj.name) {
-      let details: string[] = [`Berater: ${beraterObj.name}`];
-      if (beraterObj.phone) details.push(beraterObj.phone);
-      if (beraterObj.email) details.push(beraterObj.email);
-
-      beraterBlock = { text: details.join(' / '), margin: [0, 0, 0, 15] as [number, number, number, number], fontSize: 10, color: '#64748b' };
+      let line2Parts: string[] = [];
+      if (beraterObj.phone) line2Parts.push(`Tel: ${beraterObj.phone}`);
+      if (beraterObj.email) line2Parts.push(`E-Mail: ${beraterObj.email}`);
+      
+      const line2Text = line2Parts.join(' | ');
+      
+      beraterBlock = {
+        text: [
+          { text: `Ihr Berater: ${beraterObj.name}\n` },
+          { text: line2Text }
+        ],
+        margin: [0, 0, 0, 15] as [number, number, number, number],
+        fontSize: 10,
+        color: '#64748b'
+      };
     }
 
     const docDefinition: any = {
