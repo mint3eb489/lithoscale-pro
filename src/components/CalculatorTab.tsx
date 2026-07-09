@@ -199,6 +199,21 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
   };
 
+  const getPriceSegment = (price: number) => {
+    if (stones.length === 0) return { label: 'Classic', level: 2, dotColor: 'bg-blue-500' };
+    const prices = stones.map((s) => s.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const range = maxPrice - minPrice;
+    if (range === 0) return { label: 'Classic', level: 2, dotColor: 'bg-blue-500' };
+    
+    const ratio = (price - minPrice) / range;
+    if (ratio < 0.25) return { label: 'Basis', level: 1, dotColor: 'bg-emerald-500' };
+    if (ratio < 0.5) return { label: 'Classic', level: 2, dotColor: 'bg-blue-500' };
+    if (ratio < 0.75) return { label: 'Exclusive', level: 3, dotColor: 'bg-indigo-500' };
+    return { label: 'Premium', level: 4, dotColor: 'bg-amber-500' };
+  };
+
   const filteredStones = sortedStones.filter((s) => {
     if (activeFilter === 'dekton' && !s.isDekton) return false;
     if (activeFilter === 'natur' && s.isDekton) return false;
@@ -235,7 +250,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
 
           <div className="flex flex-col sm:flex-row gap-5 mb-5">
             <div
-              className="w-40 h-40 sm:w-32 sm:h-32 md:w-36 md:h-36 rounded-xl border border-slate-200 dark:border-darkBorder overflow-hidden shrink-0 bg-slate-50 dark:bg-black flex items-center justify-center relative shadow-inner mx-auto sm:mx-0 group cursor-pointer"
+              className="w-44 h-44 sm:w-36 sm:h-36 md:w-40 md:h-40 lg:w-40 lg:h-40 rounded-xl border border-slate-200 dark:border-darkBorder overflow-hidden shrink-0 bg-slate-50 dark:bg-black flex items-center justify-center relative shadow-inner mx-auto sm:mx-0 group cursor-pointer"
               onClick={() => selectedStone?.image && openLightbox(selectedStone.image)}
               title="Bild vergrößern"
             >
@@ -251,9 +266,8 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </div>
 
             <div className="flex-1 flex flex-col justify-center">
-              <div className="flex justify-between items-end mb-2 ml-1">
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] font-black text-slate-500 uppercase">Steinart</label>
+              <div className="flex justify-between items-center mb-2 ml-1">
+                <div className="flex items-center">
                   {selectedStone && (
                     <span className="text-[10.5px] font-mono font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md">
                       {formatMoney(selectedStone.price)}/m²
@@ -298,10 +312,10 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setDropdownOpen(!dropdownOpen)}
-                  className="w-full flex items-center justify-between bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder hover:border-slate-300 dark:hover:border-slate-700 rounded-xl p-3 text-left transition-all duration-200 shadow-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full flex items-center justify-between bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder hover:border-slate-300 dark:hover:border-slate-700 rounded-xl py-1 px-3 text-left transition-all duration-200 shadow-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg border border-slate-200 dark:border-darkBorder overflow-hidden bg-slate-50 dark:bg-black shrink-0 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-lg border border-slate-200 dark:border-darkBorder overflow-hidden bg-slate-50 dark:bg-black shrink-0 flex items-center justify-center">
                       {selectedStone?.image ? (
                         <img
                           src={selectedStone.image.startsWith('http') || selectedStone.image.startsWith('data:') ? selectedStone.image : `images/${selectedStone.image}`}
@@ -309,7 +323,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <span className="text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center leading-tight">NO<br />IMG</span>
+                        <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center leading-tight">NO<br />IMG</span>
                       )}
                     </div>
                     <div className="min-w-0">
@@ -384,14 +398,14 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                                 setSelectedStoneId(s.id);
                                 setDropdownOpen(false);
                               }}
-                              className={`w-full flex items-center justify-between p-2.5 text-left transition-all duration-150 cursor-pointer ${
+                              className={`w-full flex items-center justify-between py-0.5 px-2.5 text-left transition-all duration-150 cursor-pointer ${
                                 isSelected
                                   ? 'bg-blue-50/60 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-medium'
                                   : 'hover:bg-slate-50 dark:hover:bg-zinc-900 text-slate-700 dark:text-slate-300'
                               }`}
                             >
                               <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="w-8 h-8 rounded-lg border border-slate-200 dark:border-darkBorder overflow-hidden bg-slate-50 dark:bg-black shrink-0 flex items-center justify-center">
+                                <div className="w-12 h-12 rounded-lg border border-slate-200 dark:border-darkBorder overflow-hidden bg-slate-50 dark:bg-black shrink-0 flex items-center justify-center">
                                   {s.image ? (
                                     <img
                                       src={s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`}
@@ -399,7 +413,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                                       className="w-full h-full object-cover"
                                     />
                                   ) : (
-                                    <span className="text-[7px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center leading-tight">NO<br />IMG</span>
+                                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center leading-tight">NO<br />IMG</span>
                                   )}
                                 </div>
                                 <div className="min-w-0">
@@ -429,18 +443,52 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Preis-Segment & Gesamtmaße Panel */}
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {selectedStone && (() => {
+                  const segment = getPriceSegment(selectedStone.price);
+                  return (
+                    <div className="p-2 border border-slate-200 dark:border-darkBorder bg-slate-50/50 dark:bg-[#121212]/50 rounded-xl flex flex-col justify-between h-14">
+                      <span className="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider leading-none">Preisklasse</span>
+                      <div className="flex items-center justify-between gap-1.5 mt-1.5">
+                        <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-350 leading-none">{segment.label}</span>
+                        <div className="flex gap-0.5 shrink-0">
+                          {[1, 2, 3, 4].map((level) => (
+                            <div
+                              key={level}
+                              className={`w-2 h-1.5 rounded-full transition-all duration-300 ${
+                                level <= segment.level 
+                                  ? segment.dotColor 
+                                  : 'bg-slate-200 dark:bg-zinc-800'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div className="p-2 border border-slate-200 dark:border-darkBorder bg-slate-50/50 dark:bg-[#121212]/50 rounded-xl flex flex-col justify-between h-14">
+                  <span className="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider leading-none">Gesamtmaße</span>
+                  <div className="flex items-baseline gap-1 mt-1.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
+                    <span className="text-blue-500 dark:text-blue-400">{res.totalSqm.toFixed(2).replace('.', ',')} m²</span>
+                    <span className="text-slate-300 dark:text-zinc-750 text-[8px]">/</span>
+                    <span className="text-blue-500 dark:text-blue-400">{res.totalLfm.toFixed(2).replace('.', ',')} Lfm</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="mt-8 border-t border-slate-200 dark:border-darkBorder pt-6">
+          <div className="mt-4 border-t border-slate-200 dark:border-darkBorder pt-4">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h3 className="text-[10px] font-black text-slate-505 uppercase tracking-widest">Stückliste (Platten)</h3>
-                <p className="text-[9px] text-slate-400 font-bold mt-1">
-                  Gesamt: <span className="text-blue-500 font-mono-tabular font-bold">{res.totalSqm.toFixed(2).replace('.', ',')} m²</span> / <span className="text-blue-500 font-mono-tabular font-bold">{res.totalLfm.toFixed(2).replace('.', ',')} Lfm</span>
-                </p>
+                <h3 className="text-[10px] font-black text-slate-555 uppercase tracking-widest">Stückliste (Platten)</h3>
               </div>
               <button
+                type="button"
                 onClick={addPart}
                 className="bg-blue-500 hover:bg-blue-600 text-white shadow-md hover:scale-105 active:scale-95 transition-all w-8 h-8 rounded-xl flex items-center justify-center font-black pb-0.5"
                 title="Neue Platte hinzufügen"
@@ -639,13 +687,6 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           </div>
           </div> {/* end of relative z-10 */}
         </div>
-
-        <button
-          onClick={onResetCalculator}
-          className="w-full py-4 text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 hover:text-red-550 transition-colors"
-        >
-          Kalkulation zurücksetzen
-        </button>
       </div>
 
       {/* SUMMARY SIDEBAR - DESKTOP */}
@@ -703,7 +744,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                   <span className={`font-bold truncate mr-1.5 uppercase ${isActive ? 'text-blue-400 font-extrabold' : 'text-slate-400'}`}>
                     {mach.label}
                   </span>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -711,12 +752,12 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                         updateGlobalMachiningCount(mach.key as any, Math.max(0, val - 1));
                       }}
                       disabled={val === 0}
-                      className="w-4 h-4 rounded bg-zinc-800 text-slate-300 flex items-center justify-center font-bold active:scale-90 hover:bg-zinc-700 disabled:opacity-20 disabled:pointer-events-none"
+                      className="w-6 h-6 rounded bg-zinc-800 text-slate-300 flex items-center justify-center font-bold text-xs active:scale-90 hover:bg-zinc-700 disabled:opacity-20 disabled:pointer-events-none"
                       title={`${mach.label} verringern`}
                     >
                       -
                     </button>
-                    <span className={`w-3.5 text-center font-mono font-black text-[10px] ${isActive ? 'text-blue-400' : 'text-slate-500'}`}>
+                    <span className={`w-5 text-center font-mono font-black text-[11px] ${isActive ? 'text-blue-400' : 'text-slate-500'}`}>
                       {val}
                     </span>
                     <button
@@ -726,7 +767,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                         updateGlobalMachiningCount(mach.key as any, Math.min(20, val + 1));
                       }}
                       disabled={val >= 20}
-                      className="w-4 h-4 rounded bg-zinc-800 text-slate-300 flex items-center justify-center font-bold active:scale-90 hover:bg-zinc-700 disabled:opacity-20 disabled:pointer-events-none"
+                      className="w-6 h-6 rounded bg-zinc-800 text-slate-300 flex items-center justify-center font-bold text-xs active:scale-90 hover:bg-zinc-700 disabled:opacity-20 disabled:pointer-events-none"
                       title={`${mach.label} erhöhen`}
                     >
                       +
@@ -814,9 +855,16 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
 
           <button
             onClick={onSaveStat}
-            className="w-full py-3 flex items-center justify-center border border-slate-[#262626] text-slate-505 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+            className="w-full py-3 flex items-center justify-center border border-slate-[#262626] text-slate-505 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 mb-3"
           >
             In Markttrend übernehmen
+          </button>
+
+          <button
+            onClick={onResetCalculator}
+            className="w-full py-3 flex items-center justify-center border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+          >
+            Kalkulation zurücksetzen
           </button>
           </div> {/* end of relative z-10 */}
         </div>
@@ -898,7 +946,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                   <span className={`font-bold truncate mr-1.5 uppercase ${isActive ? 'text-blue-400 font-extrabold' : 'text-slate-400'}`}>
                     {mach.label}
                   </span>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={(e) => {
@@ -906,12 +954,12 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                         updateGlobalMachiningCount(mach.key as any, Math.max(0, val - 1));
                       }}
                       disabled={val === 0}
-                      className="w-4 h-4 rounded bg-zinc-800 text-slate-300 flex items-center justify-center font-bold active:scale-90 hover:bg-zinc-700 disabled:opacity-20 disabled:pointer-events-none"
+                      className="w-6 h-6 rounded bg-zinc-800 text-slate-300 flex items-center justify-center font-bold text-xs active:scale-90 hover:bg-zinc-700 disabled:opacity-20 disabled:pointer-events-none"
                       title={`${mach.label} verringern`}
                     >
                       -
                     </button>
-                    <span className={`w-3.5 text-center font-mono font-black text-[10px] ${isActive ? 'text-blue-400' : 'text-slate-500'}`}>
+                    <span className={`w-5 text-center font-mono font-black text-[11px] ${isActive ? 'text-blue-400' : 'text-slate-500'}`}>
                       {val}
                     </span>
                     <button
@@ -921,7 +969,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                         updateGlobalMachiningCount(mach.key as any, Math.min(20, val + 1));
                       }}
                       disabled={val >= 20}
-                      className="w-4 h-4 rounded bg-zinc-800 text-slate-300 flex items-center justify-center font-bold active:scale-90 hover:bg-zinc-700 disabled:opacity-20 disabled:pointer-events-none"
+                      className="w-6 h-6 rounded bg-zinc-800 text-slate-300 flex items-center justify-center font-bold text-xs active:scale-90 hover:bg-zinc-700 disabled:opacity-20 disabled:pointer-events-none"
                       title={`${mach.label} erhöhen`}
                     >
                       +
@@ -1009,9 +1057,16 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
 
           <button
             onClick={onSaveStat}
-            className="w-full py-4 flex items-center justify-center border border-slate-700 text-slate-400 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 mb-4"
+            className="w-full py-4 flex items-center justify-center border border-slate-700 text-slate-400 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 mb-3"
           >
             In Markttrend übernehmen
+          </button>
+
+          <button
+            onClick={onResetCalculator}
+            className="w-full py-4 flex items-center justify-center border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 mb-4"
+          >
+            Kalkulation zurücksetzen
           </button>
         </div>
       </div>

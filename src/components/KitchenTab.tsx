@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Kitchen, AppConfig, KitchenItem } from '../types';
-import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye } from 'lucide-react';
+import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff } from 'lucide-react';
 
 interface KitchenTabProps {
   kitchen: Kitchen;
@@ -335,38 +335,40 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-blue-500">€</span>
                 </div>
-                <div className="relative w-full">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={kitchen.steinEK || ''}
-                    onChange={(e) => updateField('steinEK', e.target.value)}
-                    className="input-field input-field-compact text-[9px] py-1 font-mono text-center px-2 text-slate-650 dark:text-slate-400 border-dashed bg-slate-50 dark:bg-black border-slate-300 dark:border-darkBorder"
-                    placeholder="EK Netto"
-                    title="EK (Nur für interne Übersicht)"
-                  />
-                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-500">€</span>
-                </div>
+                {kitchen.showMoebelEK && (
+                  <div className="relative w-full">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={kitchen.steinEK || ''}
+                      onChange={(e) => updateField('steinEK', e.target.value)}
+                      className="input-field input-field-compact text-[9px] py-1 font-mono text-center px-2 text-slate-650 dark:text-slate-400 border-dashed bg-slate-50 dark:bg-black border-slate-300 dark:border-darkBorder"
+                      placeholder="EK Netto"
+                      title="EK (Nur für interne Übersicht)"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-500">€</span>
+                  </div>
+                )}
               </div>
             </div>
-            <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-1.5 font-bold italic">💡 Hinweis: Bei Schichtstoff Preis leer lassen, läuft in Möbel-EK.</p>
+            {kitchen.showMoebelEK && (
+              <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-1.5 font-bold italic">💡 Hinweis: Bei Schichtstoff Preis leer lassen, läuft in Möbel-EK.</p>
+            )}
           </div>
         </div>
         </div>
 
         <div className="card p-4 relative overflow-hidden group/card hover:border-slate-300 dark:hover:border-slate-800 transition-all duration-300">
           <div className="flex justify-between items-center mb-3 border-b border-slate-200 dark:border-darkBorder pb-2">
-            <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">2. Interne Kalkulation</h2>
+            <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">2. Kalkulation</h2>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => updateField('showMoebelEK', !kitchen.showMoebelEK)}
-                className="text-slate-650 hover:text-blue-505 dark:text-slate-400 dark:hover:text-blue-400 transition-colors focus:outline-none flex items-center cursor-pointer hover:scale-105 active:scale-95"
-                title="EK ein-/ausblenden"
+                className="text-slate-650 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400 transition-all focus:outline-none flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 p-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-330 dark:border-darkBorder shadow-sm"
+                title={kitchen.showMoebelEK ? 'EK & Erklärungen verbergen' : 'EK & Erklärungen einblenden'}
               >
-                <span className="text-[10px] font-bold uppercase tracking-wider">
-                  {kitchen.showMoebelEK ? 'EK verbergen' : 'EK einblenden'}
-                </span>
+                {kitchen.showMoebelEK ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               </button>
               <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder shadow-sm">
                 <span className="text-[8px] font-black text-slate-700 dark:text-slate-300 uppercase">Möbel-Rabatt:</span>
@@ -562,7 +564,9 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
               </div>
             ))}
           </div>
-          <p className="text-[10px] text-slate-600 dark:text-slate-450 mt-2 font-bold italic">💡 Diese Positionen fließen NICHT in den Endpreis ein. Sie werden auf dem PDF separat ausgewiesen.</p>
+          {kitchen.showMoebelEK && (
+            <p className="text-[10px] text-slate-600 dark:text-slate-450 mt-2 font-bold italic">💡 Diese Positionen fließen NICHT in den Endpreis ein. Sie werden auf dem PDF separat ausgewiesen.</p>
+          )}
         </div>
 
         <div className="card p-4 relative overflow-hidden group/card hover:border-slate-300 dark:hover:border-slate-800 transition-all duration-300">
@@ -600,11 +604,11 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
 
           <div className="space-y-2">
             {[
-              { id: 'opt-kuechentext', field: 'optKuechenText', title: 'Einleitungstext andrucken', desc: 'Persönliche Begrüßung ganz oben auf dem PDF.' },
-              { id: 'opt-ballerina', field: 'optBallerina', title: 'Ballerina Qualitystext andrucken', desc: 'Korpus, Rückwände, Belastbarkeit etc.' },
-              { id: 'opt-anschluss', field: 'optAnschluss', title: '240,- EUR Anschluss-Service andrucken', desc: 'Hinweis auf separaten Monteur vor Ort.' },
-              { id: 'opt-anschluss-rabatt', field: 'optAnschlussRabatt', title: 'Anschluss-Rabatt andrucken', desc: '"Damit Sie effektiv keinen Mehrpreis haben..."' },
-              { id: 'opt-nachtext', field: 'optNachtext', title: 'Nachtext / Verabschiedung andrucken', desc: 'Schlusssatz ganz unten auf dem Dokument.' },
+              { id: 'opt-kuechentext', field: 'optKuechenText', title: 'Einleitungstext', desc: 'Persönliche Begrüßung ganz oben auf dem PDF.' },
+              { id: 'opt-ballerina', field: 'optBallerina', title: 'Ballerina Qualitätstext', desc: 'Korpus, Rückwände, Belastbarkeit etc.' },
+              { id: 'opt-anschluss', field: 'optAnschluss', title: '240,- EUR Anschluss-Service', desc: 'Hinweis auf separaten Monteur vor Ort.' },
+              { id: 'opt-anschluss-rabatt', field: 'optAnschlussRabatt', title: 'Anschluss-Rabatt', desc: '"Damit Sie effektiv keinen Mehrpreis haben..."' },
+              { id: 'opt-nachtext', field: 'optNachtext', title: 'Nachtext / Verabschiedung', desc: 'Schlusssatz ganz unten auf dem Dokument.' },
             ].map((opt) => (
               <label key={opt.id} className="flex items-start gap-2.5 cursor-pointer group select-none hover:bg-slate-50 dark:hover:bg-white/5 p-1.5 rounded-xl transition-all duration-200">
                 <input
@@ -683,7 +687,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
             <button
               type="button"
               onClick={onResetKitchen}
-              className="w-full py-2.5 text-[9px] font-black uppercase tracking-[0.3em] text-[#94a3b8] hover:text-red-500 hover:bg-red-500/5 rounded-lg transition-all border-t border-slate-900 cursor-pointer"
+              className="w-full py-3 flex items-center justify-center border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
             >
               Kalkulation leeren
             </button>

@@ -62,6 +62,22 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kein Bild</span>
           )}
           
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleCompare(s.id, e);
+            }}
+            className={`absolute top-2 left-2 p-2 rounded-full transition-all backdrop-blur-sm shadow-lg z-20 ${
+              isComparing
+                ? 'bg-blue-500 text-white scale-105'
+                : 'bg-black/50 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-black/70 hover:scale-105'
+            }`}
+            title="Material vergleichen (1-Klick-Vergleich)"
+          >
+            <Scale className="w-3.5 h-3.5" />
+          </button>
+
           {hasImage && (
             <button
               onClick={(e) => {
@@ -75,14 +91,14 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
           )}
 
           {isActive && (
-            <div className="absolute top-2 left-2 bg-emerald-500 text-white px-2.5 py-1 rounded-full text-[8px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1">
+            <div className="absolute bottom-2 left-2 bg-emerald-500 text-white px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest shadow-lg flex items-center gap-1 select-none z-10">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-              Aktives Material
+              Aktiv
             </div>
           )}
         </div>
         
-        <div className="p-3 md:p-4 bg-white dark:bg-[#121212] relative z-10 flex flex-col justify-between min-h-[115px]">
+        <div className="p-3 md:p-4 bg-white dark:bg-[#121212] relative z-10 flex flex-col justify-between">
           <div>
             <p className="font-bold text-xs md:text-sm truncate text-slate-800 dark:text-slate-200" title={s.name}>
               {s.name}
@@ -90,25 +106,6 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
             <p className="text-[10px] md:text-xs font-mono font-bold text-slate-500 mt-1">
               {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(s.price)} / m²
             </p>
-          </div>
-
-          <div className="mt-3">
-            {isActive ? (
-              <div className="w-full py-1.5 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-800/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-[9px] font-black uppercase tracking-wider text-center select-none">
-                Bereits Aktiv
-              </div>
-            ) : (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleCompare(s.id, e);
-                }}
-                className="w-full py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/40 border border-blue-200/50 dark:border-blue-800/30 text-blue-600 dark:text-blue-400 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-1 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Scale className="w-3 h-3" />
-                1-Klick-Vergleich
-              </button>
-            )}
           </div>
         </div>
       </div>

@@ -123,3 +123,49 @@
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+/* Dezent groessere Schrift & Textfelder im Bereich "Angebote" zur besseren Lesbarkeit */
+#tab-kitchen .input-field-compact {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 13px !important;
+  border-radius: 0.5rem !important;
+}
+
+#tab-kitchen textarea {
+  font-size: 13px !important;
+  padding: 0.6rem 0.8rem !important;
+}
+
+#tab-kitchen select.input-field-compact {
+  height: auto !important;
+}
+
+#tab-kitchen label {
+  line-height: 1.4 !important;
+}
+
+/* Skaliere kleine Textgroessen dezent nach oben fuer bessere Lesbarkeit */
+#tab-kitchen .text-\[9px\] {
+  font-size: 11px !important;
+}
+
+#tab-kitchen .text-\[10px\] {
+  font-size: 11.5px !important;
+}
+
+#tab-kitchen .text-\[8px\] {
+  font-size: 10px !important;
+}
+
+#tab-kitchen .text-xs {
+  font-size: 13px !important;
+}
+
+#tab-kitchen .text-sm {
+  font-size: 14.5px !important;
+}
+
+#tab-kitchen .text-3xl {
+  font-size: 2rem !important;
+}
+
+
