@@ -270,7 +270,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                   : 'text-slate-505 hover:text-slate-800 dark:hover:text-white'
               }`}
             >
-              LithoScale
+              Parameter
             </button>
             <button
               onClick={() => setActiveAdminTab('admin-kitchen')}
@@ -280,7 +280,8 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                   : 'text-slate-505 hover:text-slate-800 dark:hover:text-white'
               }`}
             >
-              Küchen-Texte
+              <span className="hidden md:inline">Küchen-Texte</span>
+              <span className="inline md:hidden">Küchen-TXT</span>
             </button>
             <button
               onClick={() => setActiveAdminTab('admin-import')}
@@ -290,7 +291,8 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                   : 'text-slate-505 hover:text-slate-800 dark:hover:text-white'
               }`}
             >
-              CARAT Import
+              <span className="hidden md:inline">CARAT Import</span>
+              <span className="inline md:hidden">Import</span>
             </button>
           </>
         )}
@@ -302,7 +304,8 @@ export const AdminTab: React.FC<AdminTabProps> = ({
               : 'text-slate-505 hover:text-slate-800 dark:hover:text-white'
           }`}
         >
-          Benutzerverwaltung
+          <span className="hidden md:inline">Benutzerverwaltung</span>
+          <span className="inline md:hidden">Verwaltung</span>
         </button>
       </div>
 
