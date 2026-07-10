@@ -28,7 +28,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           </div>
           <div>
             <h1 className="text-3xl font-black flex items-center tracking-tighter select-none text-slate-900 dark:text-white">
-              LithoScale <span className="inline-flex items-center border-[1.2px] border-amber-400 text-amber-400 rounded px-1.5 py-0.5 text-[0.45em] font-black ml-2.5 translate-y-[-2px]">PRO</span>
+              LithoScale <span className="inline-flex items-center border-[1.2px] border-amber-400 text-amber-400 rounded px-1.5 py-0.5 text-[0.45em] font-black ml-2.5 translate-y-[-2px]">Pro</span>
             </h1>
           </div>
         </div>

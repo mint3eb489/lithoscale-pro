@@ -57,6 +57,30 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   const [editingMachiningPartId, setEditingMachiningPartId] = useState<number | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isInputFocused, setIsInputFocused] = useState(false);
+
+  useEffect(() => {
+    const handleFocusChange = () => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.getAttribute('contenteditable') === 'true'
+      );
+      setIsInputFocused(!!isInput);
+    };
+
+    document.addEventListener('focusin', handleFocusChange);
+    const handleFocusOut = () => {
+      setTimeout(handleFocusChange, 50);
+    };
+    document.addEventListener('focusout', handleFocusOut);
+
+    return () => {
+      document.removeEventListener('focusin', handleFocusChange);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -879,9 +903,17 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
       />
 
       <div
-        className={`fixed left-0 right-0 bottom-0 z-50 lg:hidden transform transition-transform duration-300 ease-out flex flex-col max-h-[85vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] rounded-t-3xl bg-black border-t border-darkBorder ${
-          mobileSheetOpen ? 'translate-y-0' : 'translate-y-[calc(100%-88px)]'
-        }`}
+        className="fixed left-0 right-0 bottom-0 z-50 lg:hidden flex flex-col max-h-[85vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] rounded-t-3xl bg-black border-t border-darkBorder transition-all duration-300 ease-out"
+        style={{
+          paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          transform: isInputFocused
+            ? 'translateY(100%)'
+            : mobileSheetOpen
+              ? 'translateY(0)'
+              : 'translateY(calc(100% - 82px - env(safe-area-inset-bottom, 0px)))',
+          opacity: isInputFocused ? 0 : 1,
+          pointerEvents: isInputFocused ? 'none' : 'auto',
+        }}
       >
         <div
           className="bg-white/95 dark:bg-black/95 backdrop-blur-xl p-4 rounded-t-3xl cursor-pointer shrink-0 border-b border-darkBorder active:bg-slate-100 dark:active:bg-slate-900 transition-colors"
