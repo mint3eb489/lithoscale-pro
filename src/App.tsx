@@ -1444,7 +1444,7 @@ export default function App() {
   const existingFolders = Array.from(new Set(visibleOffers.map(o => o.folder).filter(Boolean))) as string[];
 
   return (
-    <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans">
+    <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans overflow-x-hidden">
       
       {/* CLOUD CONNECTIVITY STATUS INDICATOR */}
       <div id="cloud-status" className="fixed top-4 right-4 text-[9px] font-bold uppercase tracking-widest z-50 flex flex-col items-end gap-1">

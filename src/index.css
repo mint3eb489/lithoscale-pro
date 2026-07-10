@@ -95,8 +95,8 @@
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.35);
 }
 
-/* Premium global Blue Glow in top-right corner on hover (excluded from gallery-card) */
-.card:not(.gallery-card)::after {
+/* Premium global Blue Glow in top-right corner on hover (excluded from gallery-card and no-glow cards) */
+.card:not(.gallery-card):not(.no-glow)::after {
   content: "";
   position: absolute;
   top: -4rem;

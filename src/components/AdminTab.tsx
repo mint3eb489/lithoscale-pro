@@ -124,7 +124,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
 
   return (
     <div id="tab-admin" className="space-y-6 pb-20">
-      <div className="card !overflow-visible p-6 bg-slate-50 dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-2xl space-y-4">
+      <div className="card no-glow !overflow-visible p-6 bg-slate-50 dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-2xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-darkBorder pb-4 gap-4">
           <div>
             <h2 className="text-lg font-black text-blue-600 flex items-center gap-2">
