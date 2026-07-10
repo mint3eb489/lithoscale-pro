@@ -2418,10 +2418,8 @@ export default function App() {
         <div id="login-overlay" className="fixed inset-0 z-[1000] bg-slate-50 dark:bg-[#000000] flex items-center justify-center p-4">
           <div className="card p-8 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] rounded-3xl">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-black dark:bg-white rounded-2xl flex items-center justify-center shadow-lg border border-white/10 mx-auto mb-4">
-                <svg className="w-8 h-8 text-blue-500 dark:text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M3 3h18v18H3zM3 9h18M9 3v18" strokeLinecap="round" />
-                </svg>
+              <div className="w-16 h-16 bg-black dark:bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-lg border border-white/10 mx-auto mb-4">
+                <img src="/apple-touch-icon.png" className="w-full h-full object-cover" alt="LithoScale Pro Logo" referrerPolicy="no-referrer" />
               </div>
               <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 LithoScale <span className="text-blue-500">PRO</span>

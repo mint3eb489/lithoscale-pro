@@ -21,10 +21,8 @@ export const Navigation: React.FC<NavigationProps> = ({
       {/* LEFT AREA: aligned with Configuration (lg:col-span-3) */}
       <div className="lg:col-span-3 flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 bg-black dark:bg-white rounded-2xl flex items-center justify-center shadow-2xl border border-white/10 shrink-0">
-            <svg className="w-9 h-9 text-blue-500 dark:text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M3 3h18v18H3zM3 9h18M9 3v18" strokeLinecap="round" />
-            </svg>
+          <div className="w-14 h-14 bg-black dark:bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl border border-white/10 shrink-0">
+            <img src="/apple-touch-icon.png" className="w-full h-full object-cover" alt="LithoScale Pro Logo" referrerPolicy="no-referrer" />
           </div>
           <div>
             <h1 className="text-3xl font-black flex items-center tracking-tighter select-none text-slate-900 dark:text-white">

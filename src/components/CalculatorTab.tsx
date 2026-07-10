@@ -214,7 +214,18 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
         if (field === 'edges-v') return { ...p, edges: { ...p.edges, v: !p.edges.v } };
         if (field === 'edges-l') return { ...p, edges: { ...p.edges, l: !p.edges.l } };
         if (field === 'edges-r') return { ...p, edges: { ...p.edges, r: !p.edges.r } };
-        return { ...p, [field]: val };
+
+        let finalVal = val;
+        if (field === 'l' || field === 'w') {
+          // Robust validation for dimension inputs:
+          // 1. Remove units "cm" and "mm" (case-insensitive)
+          let cleaned = String(val).replace(/(cm|mm)/gi, '');
+          // 2. Filter to exclusively allow numbers, dots, and commas
+          cleaned = cleaned.replace(/[^0-9.,]/g, '');
+          finalVal = cleaned;
+        }
+
+        return { ...p, [field]: finalVal };
       })
     );
   };
