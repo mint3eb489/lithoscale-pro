@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Part } from '../types';
 import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, RotateCcw, ChevronDown, Search } from 'lucide-react';
+import { AnimatedNumber } from './AnimatedNumber';
 
 interface CalculatorTabProps {
   stones: Stone[];
@@ -875,7 +876,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           <div className="text-center mb-6 pt-4 border-t border-white/5">
             <p className="text-[9px] font-black text-slate-600 uppercase mb-1 tracking-widest">Einkaufspreis (EK Netto)</p>
             <p className="text-lg font-bold text-slate-400 font-mono tracking-tighter font-mono-tabular">
-              {formatMoney(res.ek)}
+              <AnimatedNumber value={res.ek} formatter={formatMoney} />
             </p>
           </div>
 
@@ -883,7 +884,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             <div className="absolute inset-0 bg-blue-500/5" />
             <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 relative">Verkaufspreis (VK Brutto)</p>
             <p className="text-4xl font-black text-blue-500 tracking-tighter font-mono-tabular relative">
-              {formatMoney(res.vk)}
+              <AnimatedNumber value={res.vk} formatter={formatMoney} />
             </p>
             <p className="text-[8px] text-slate-500 mt-2 italic relative">*Kalkuliert mit aktuellem Faktor</p>
           </div>
@@ -938,7 +939,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </div>
             <div className="flex items-center gap-3">
               <p className="text-2xl font-black text-blue-500 tracking-tighter font-mono-tabular">
-                {formatMoney(res.vk)}
+                <AnimatedNumber value={res.vk} formatter={formatMoney} />
               </p>
               <span className={`w-5 h-5 text-slate-400 transform transition-transform ${mobileSheetOpen ? 'rotate-180' : ''}`}>▼</span>
             </div>
@@ -1085,7 +1086,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           <div className="text-center mb-6 pt-4 border-t border-white/5">
             <p className="text-[9px] font-black text-slate-600 uppercase mb-1 tracking-widest">Einkaufspreis (EK Netto)</p>
             <p className="text-lg font-bold text-slate-400 font-mono tracking-tighter font-mono-tabular">
-              {formatMoney(res.ek)}
+              <AnimatedNumber value={res.ek} formatter={formatMoney} />
             </p>
           </div>
 
@@ -1093,7 +1094,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             <div className="absolute inset-0 bg-blue-500/5" />
             <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 relative">Verkaufspreis (VK Brutto)</p>
             <p className="text-4xl font-black text-blue-500 tracking-tighter font-mono-tabular relative font-mono">
-              {formatMoney(res.vk)}
+              <AnimatedNumber value={res.vk} formatter={formatMoney} />
             </p>
             <p className="text-[8px] text-slate-500 mt-2 italic relative">*Kalkuliert mit aktuellem Faktor</p>
           </div>

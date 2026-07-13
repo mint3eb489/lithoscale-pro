@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { Kitchen, AppConfig, KitchenItem } from '../types';
 import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff } from 'lucide-react';
+import { AnimatedNumber } from './AnimatedNumber';
 
 interface KitchenTabProps {
   kitchen: Kitchen;
@@ -448,30 +449,30 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
 
               <div className="space-y-1.5">
                 {(kitchen[block.type as keyof Kitchen] as KitchenItem[] || []).map((item, index, arr) => (
-                  <div key={item.id} className="flex flex-col xl:flex-row items-stretch xl:items-center gap-1.5 p-1 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/5 transition-all duration-200">
+                  <div key={item.id} className="flex flex-row items-center gap-1.5 p-1 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/5 transition-all duration-200 w-full">
                     <input
                       type="text"
                       value={item.name}
                       onChange={(e) => updateItem(block.type as any, item.id as any, 'name', e.target.value)}
-                      className="input-field input-field-compact text-xs flex-1 text-slate-905 dark:text-white font-medium"
+                      className="input-field input-field-compact text-xs flex-1 min-w-0 text-slate-905 dark:text-white font-medium"
                       placeholder={block.phName}
                     />
-                    <div className="flex items-center gap-1.5 justify-between xl:justify-start">
-                      <div className="relative w-28 sm:w-30 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="relative w-24 sm:w-28 shrink-0">
                         <input
                           type="text"
                           inputMode="decimal"
                           value={item.val}
                           onChange={(e) => updateItem(block.type as any, item.id as any, 'val', e.target.value)}
-                          className="input-field input-field-compact font-mono text-center text-slate-905 dark:text-white"
+                          className="input-field input-field-compact font-mono text-center text-slate-905 dark:text-white px-2 pr-6"
                           placeholder={block.phVal}
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500">€</span>
+                        <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500">€</span>
                       </div>
                       
                       {/* Zeile löschen */}
                       <div className="flex items-center shrink-0">
-                        {arr.length > 1 && (
+                        {arr.length > 1 ? (
                           <button
                             type="button"
                             onClick={() => removeItem(block.type as any, item.id as any)}
@@ -480,6 +481,8 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
+                        ) : (
+                          <div className="w-7 h-7" />
                         )}
                       </div>
                     </div>
@@ -526,30 +529,30 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
           </div>
           <div className="space-y-1.5">
             {(kitchen.mehrpreise || []).map((item, index, arr) => (
-              <div key={item.id} className="flex flex-col xl:flex-row items-stretch xl:items-center gap-1.5 p-1 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/5 transition-all duration-200">
+              <div key={item.id} className="flex flex-row items-center gap-1.5 p-1 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/5 transition-all duration-200 w-full">
                 <input
                   type="text"
                   value={item.name}
                   onChange={(e) => updateItem('mehrpreise', item.id, 'name', e.target.value)}
-                  className="input-field input-field-compact text-xs flex-1 text-slate-900 dark:text-white"
+                  className="input-field input-field-compact text-xs flex-1 min-w-0 text-slate-900 dark:text-white"
                   placeholder="Aufpreis Siemens Kochfeld..."
                 />
-                <div className="flex items-center gap-1.5 justify-between xl:justify-start">
-                  <div className="relative w-28 sm:w-30 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="relative w-24 sm:w-28 shrink-0">
                     <input
                       type="text"
                       inputMode="decimal"
                       value={item.val}
                       onChange={(e) => updateItem('mehrpreise', item.id, 'val', e.target.value)}
-                      className="input-field input-field-compact font-mono text-center text-slate-905 dark:text-white"
+                      className="input-field input-field-compact font-mono text-center text-slate-905 dark:text-white px-2 pr-6"
                       placeholder="Preis"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500">€</span>
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500">€</span>
                   </div>
                   
                   {/* Zeile löschen */}
                   <div className="flex items-center shrink-0">
-                    {arr.length > 1 && (
+                    {arr.length > 1 ? (
                       <button
                         type="button"
                         onClick={() => removeItem('mehrpreise', item.id)}
@@ -558,6 +561,8 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
+                    ) : (
+                      <div className="w-7 h-7" />
                     )}
                   </div>
                 </div>
@@ -643,7 +648,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
               <div className="absolute inset-0 bg-blue-500/5" />
               <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 relative">Gesamt-VK (Brutto)</p>
               <p className="text-3xl font-black text-blue-400 tracking-tighter font-mono-tabular relative">
-                {formatMoney(finalDisplayVK)}
+                <AnimatedNumber value={finalDisplayVK} formatter={formatMoney} />
               </p>
             </div>
 
@@ -652,7 +657,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                 Darin enthaltene Lieferung & Montage (9,5%)
               </p>
               <p className="text-sm font-black text-emerald-400 font-mono-tabular">
-                {formatMoney(proportionMontage)}
+                <AnimatedNumber value={proportionMontage} formatter={formatMoney} />
               </p>
             </div>
 
