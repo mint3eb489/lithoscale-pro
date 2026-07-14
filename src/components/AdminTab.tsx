@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Berater, UserProfile } from '../types';
 import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -49,6 +49,61 @@ const configLabels: Record<string, string> = {
   miter: "Gehrung (€/Lfm)",
   adminPass: "Admin Passwort",
   moebelFactor: "Möbel-Faktor (VK)"
+};
+
+interface UserFactorInputProps {
+  value?: number | null;
+  placeholder: string;
+  disabled?: boolean;
+  onSave: (val: number | null) => void;
+}
+
+const UserFactorInput: React.FC<UserFactorInputProps> = ({
+  value,
+  placeholder,
+  disabled,
+  onSave,
+}) => {
+  const [localVal, setLocalVal] = useState<string>('');
+
+  // Synchronize local value with incoming value from parent, but only if the input is not currently active
+  useEffect(() => {
+    if (value !== undefined && value !== null) {
+      setLocalVal(String(value).replace('.', ','));
+    } else {
+      setLocalVal('');
+    }
+  }, [value]);
+
+  const handleBlur = () => {
+    const valStr = localVal.replace(',', '.').trim();
+    const parsed = valStr === '' ? null : parseFloat(valStr);
+    onSave(parsed);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      disabled={disabled}
+      placeholder={placeholder}
+      value={localVal}
+      onChange={(e) => {
+        // Allow digits, commas, and dots
+        const cleaned = e.target.value.replace(/[^0-9.,]/g, '');
+        setLocalVal(cleaned);
+      }}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className="w-16 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-800 dark:text-slate-100 focus:border-blue-555 outline-none"
+    />
+  );
 };
 
 export const AdminTab: React.FC<AdminTabProps> = ({
@@ -814,18 +869,13 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                         <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">Stein VK-Faktor:</span>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              disabled={cannotEdit}
+                            <UserFactorInput
+                              value={u.customFactors?.factor}
                               placeholder={String(config.factor)}
-                              value={u.customFactors?.factor !== undefined ? String(u.customFactors.factor).replace('.', ',') : ''}
-                              onChange={(e) => {
-                                const valStr = e.target.value.replace(',', '.').trim();
-                                const parsed = valStr === '' ? null : parseFloat(valStr);
+                              disabled={cannotEdit}
+                              onSave={(parsed) => {
                                 onUpdateUserFactors && onUpdateUserFactors(u.id, parsed, u.customFactors?.moebelFactor ?? null);
                               }}
-                              className="w-16 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-800 dark:text-slate-100 focus:border-blue-555 outline-none"
                             />
                             <span className="text-[9px] text-slate-400">
                               (Standard: {config.factor})
@@ -834,18 +884,13 @@ export const AdminTab: React.FC<AdminTabProps> = ({
 
                           <div className="flex items-center gap-1.5">
                             <span className="text-[10px] text-slate-600 dark:text-slate-400 font-medium">Möbel-Faktor:</span>
-                            <input
-                              type="text"
-                              inputMode="decimal"
-                              disabled={cannotEdit}
+                            <UserFactorInput
+                              value={u.customFactors?.moebelFactor}
                               placeholder={String(config.moebelFactor || 2.0)}
-                              value={u.customFactors?.moebelFactor !== undefined ? String(u.customFactors.moebelFactor).replace('.', ',') : ''}
-                              onChange={(e) => {
-                                const valStr = e.target.value.replace(',', '.').trim();
-                                const parsed = valStr === '' ? null : parseFloat(valStr);
+                              disabled={cannotEdit}
+                              onSave={(parsed) => {
                                 onUpdateUserFactors && onUpdateUserFactors(u.id, u.customFactors?.factor ?? null, parsed);
                               }}
-                              className="w-16 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded px-1.5 py-0.5 text-[10px] font-mono text-slate-800 dark:text-slate-100 focus:border-blue-555 outline-none"
                             />
                             <span className="text-[9px] text-slate-400">
                               (Standard: {config.moebelFactor || 2.0})
