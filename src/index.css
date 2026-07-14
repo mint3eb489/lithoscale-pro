@@ -81,6 +81,7 @@
   transform: translateZ(0);
   will-change: transform;
   isolation: isolate;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 
 /* Fix Safari/Chrome mobile rounded corner overflow clipping bug for glow circles and absolute overlays */
@@ -88,6 +89,7 @@
   transform: translateZ(0);
   will-change: transform;
   isolation: isolate;
+  -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 
 .dark .card {
