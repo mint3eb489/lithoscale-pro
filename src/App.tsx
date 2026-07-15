@@ -1440,8 +1440,10 @@ export default function App() {
   // 4. Sort families
   const sortedFamilies = familiesList.sort((a, b) => {
     if (offerSort === 'berater') {
-      const nameA = config.beraterList?.find((ber) => String(ber.id) === String(a.latestOffer.beraterId))?.name || '';
-      const nameB = config.beraterList?.find((ber) => String(ber.id) === String(b.latestOffer.beraterId))?.name || '';
+      const nameA = (usersList || []).find((u) => String(u.id) === String(a.latestOffer.beraterId))?.name ||
+                    config.beraterList?.find((ber) => String(ber.id) === String(a.latestOffer.beraterId))?.name || '';
+      const nameB = (usersList || []).find((u) => String(u.id) === String(b.latestOffer.beraterId))?.name ||
+                    config.beraterList?.find((ber) => String(ber.id) === String(b.latestOffer.beraterId))?.name || '';
       return nameA.localeCompare(nameB);
     }
     return (b.latestOffer.timestamp || 0) - (a.latestOffer.timestamp || 0);
@@ -1782,11 +1784,27 @@ export default function App() {
                         className="bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-xl px-3 py-2 text-sm outline-none text-slate-8 w-36 cursor-pointer text-slate-800 dark:text-white"
                       >
                         <option value="all">Alle Berater</option>
-                        {(config.beraterList || []).map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                          </option>
-                        ))}
+                        {(usersList && usersList.length > 0) ? (
+                          [...usersList]
+                            .sort((a, b) => {
+                              const aIsEnrico = a.name?.toLowerCase().includes("enrico belmonte");
+                              const bIsEnrico = b.name?.toLowerCase().includes("enrico belmonte");
+                              if (aIsEnrico && !bIsEnrico) return -1;
+                              if (!aIsEnrico && bIsEnrico) return 1;
+                              return 0;
+                            })
+                            .map((u) => (
+                              <option key={u.id} value={u.id}>
+                                {u.name}
+                              </option>
+                            ))
+                        ) : (
+                          (config.beraterList || []).map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))
+                        )}
                       </select>
                       <select
                         value={offerSort}
@@ -1810,7 +1828,8 @@ export default function App() {
                     ) : (
                       sortedFamilies.map((fam) => {
                         const lat = fam.latestOffer;
-                        const foundBerater = config.beraterList?.find((b) => String(b.id) === String(lat.beraterId));
+                        const foundBerater = (usersList || []).find((u) => String(u.id) === String(lat.beraterId)) ||
+                                             (config.beraterList || []).find((b) => String(b.id) === String(lat.beraterId));
                         const isExpanded = !!expandedFamilies[fam.familyId];
                         const olderVersions = fam.versions.slice(1);
 
@@ -1904,7 +1923,8 @@ export default function App() {
                             {isExpanded && olderVersions.length > 0 && (
                               <div className="border-t border-slate-150 dark:border-zinc-900 bg-slate-50/50 dark:bg-black/25 px-4 py-3 divide-y divide-slate-100 dark:divide-zinc-900/40">
                                 {olderVersions.map((ver) => {
-                                  const verBerater = config.beraterList?.find((b) => String(b.id) === String(ver.beraterId));
+                                  const verBerater = (usersList || []).find((u) => String(u.id) === String(ver.beraterId)) ||
+                                                     (config.beraterList || []).find((b) => String(b.id) === String(ver.beraterId));
                                   return (
                                     <div
                                       key={ver.id}
