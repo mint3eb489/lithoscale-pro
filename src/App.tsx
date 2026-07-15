@@ -172,9 +172,6 @@ export default function App() {
   };
 
   // Modals & Overlay triggers
-  const [adminGateOpen, setAdminGateOpen] = useState<boolean>(false);
-  const [adminGatePassword, setAdminGatePassword] = useState<string>('');
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState<boolean>(false);
 
   const [compareList, setCompareList] = useState<string[]>([]);
   const [compareModalOpen, setCompareModalOpen] = useState<boolean>(false);
@@ -260,9 +257,9 @@ export default function App() {
     };
   }, []);
 
-  // Subscribe to all users if current user is an admin or admin is unlocked
+  // Subscribe to all users if current user is an admin or sys-admin
   useEffect(() => {
-    if (currentUser && (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin' || isAdminUnlocked)) {
+    if (currentUser && (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin')) {
       const collRef = collection(db, 'artifacts', internalAppId, 'public', 'data', 'users');
       const unsub = onSnapshot(collRef, (snap) => {
         const list: UserProfile[] = [];
@@ -275,7 +272,7 @@ export default function App() {
       });
       return unsub;
     }
-  }, [currentUser, userProfile, isAdminUnlocked]);
+  }, [currentUser, userProfile]);
 
   const subscribeToCloudSettings = () => {
     const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'settings', 'active');
@@ -432,6 +429,24 @@ export default function App() {
     try {
       const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'users', uid);
       await setDoc(docRef, { name }, { merge: true });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateUserEmail = async (uid: string, email: string) => {
+    try {
+      const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'users', uid);
+      await setDoc(docRef, { email: email.toLowerCase().trim() }, { merge: true });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateUserPhone = async (uid: string, phone: string) => {
+    try {
+      const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'users', uid);
+      await setDoc(docRef, { phone }, { merge: true });
     } catch (err) {
       console.error(err);
     }
@@ -1019,6 +1034,7 @@ export default function App() {
         vkStein,
         vkMiele,
         vkMoebel,
+        usersList,
       },
       showToast
     );
@@ -1064,6 +1080,7 @@ export default function App() {
           vkStein,
           vkMiele,
           vkMoebel,
+          usersList,
         },
         showToast,
         'blob'
@@ -1079,16 +1096,7 @@ export default function App() {
     }
   };
 
-  const handleAdminGate = () => {
-    if (adminGatePassword === config.adminPass) {
-      setIsAdminUnlocked(true);
-      setAdminGateOpen(false);
-      setAdminGatePassword('');
-      setActiveTab('admin');
-    } else {
-      alert('Falsches Admin Passwort.');
-    }
-  };
+
 
   const handleSaveStat = () => {
     const s = stones.find((x) => x.id === selectedStoneId) || stones[0];
@@ -1350,10 +1358,8 @@ export default function App() {
   // Handle Tab Switch restrictions
   const handleTabSwitch = (t: string) => {
     if (t === 'admin') {
-      if (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin' || isAdminUnlocked) {
+      if (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin') {
         setActiveTab(t);
-      } else {
-        setAdminGateOpen(true);
       }
     } else {
       setActiveTab(t);
@@ -1463,6 +1469,7 @@ export default function App() {
           dark={dark}
           toggleDark={() => setDark((prev) => !prev)}
           onLogout={handleLogout}
+          isAdmin={userProfile?.role === 'admin' || userProfile?.role === 'sys-admin'}
         />
 
         {/* Dynamic Panels container */}
@@ -1565,10 +1572,11 @@ export default function App() {
               onGeneratePDFPreview={triggerPDFPreview}
               onImportCaratXLSX={handleImportCaratXLSX}
               personalFactors={personalFactors}
+              usersList={usersList}
             />
           )}
 
-          {(activeTab === 'admin' && (isAdminUnlocked || userProfile?.role === 'admin' || userProfile?.role === 'sys-admin')) && (
+          {(activeTab === 'admin' && (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin')) && (
             <AdminTab
               stones={stones}
               config={config}
@@ -1585,32 +1593,18 @@ export default function App() {
               onDeleteStone={(id) => {
                 setStones((prev) => prev.filter((s) => s.id !== id));
               }}
-              onAddBerater={() => {
-                setConfig((prev) => ({
-                  ...prev,
-                  beraterList: [...(prev.beraterList || []), { id: Date.now(), name: '', email: '', phone: '' }],
-                }));
-              }}
-              onUpdateBerater={(id, field, val) => {
-                setConfig((prev) => ({
-                  ...prev,
-                  beraterList: prev.beraterList.map((b) => (b.id === id ? { ...b, [field]: val } : b)),
-                }));
-              }}
-              onRemoveBerater={(id) => {
-                setConfig((prev) => ({ ...prev, beraterList: prev.beraterList.filter((b) => b.id !== id) }));
-              }}
               onPushToCloud={pushToCloud}
               onFactoryReset={factoryResetCloud}
               usersList={usersList}
               onUpdateUserRole={handleUpdateUserRole}
               onUpdateUserFactors={handleUpdateUserFactors}
               onUpdateUserName={handleUpdateUserName}
+              onUpdateUserEmail={handleUpdateUserEmail}
+              onUpdateUserPhone={handleUpdateUserPhone}
               onAddPreRegisteredUser={handleAddPreRegisteredUser}
               onDeleteUserProfile={handleDeleteUserProfile}
               currentUserUid={currentUser?.uid}
               currentUserRole={userProfile?.role}
-              isAdminUnlocked={isAdminUnlocked}
               onBackupMaterialsConfig={downloadMaterialsConfigBackup}
               onRestoreMaterialsConfig={importMaterialsConfigBackup}
               onBackupOffers={downloadOffersBackup}
@@ -2217,49 +2211,6 @@ export default function App() {
             <button className="absolute top-6 right-6 text-white bg-white/10 p-4 rounded-full hover:bg-white/20 backdrop-blur-sm shadow-lg leading-none text-xl">
               ✕
             </button>
-          </div>
-        )}
-
-        {/* 4. ADMIN LOGIN GATE */}
-        {adminGateOpen && (
-          <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="card p-8 p-6 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-3xl">
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <KeyRound className="w-8 h-8 text-blue-500" />
-                </div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Admin-Zugang</h2>
-                <p className="text-xs text-slate-500 mt-1 uppercase tracking-widest font-bold">Passwort erforderlich</p>
-              </div>
-              
-              <input
-                type="password"
-                value={adminGatePassword}
-                onChange={(e) => setAdminGatePassword(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAdminGate()}
-                placeholder="••••"
-                className="input-field text-center text-2xl tracking-widest mb-4 font-mono text-slate-900 dark:text-white"
-                autoFocus
-              />
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => {
-                    setAdminGateOpen(false);
-                    setAdminGatePassword('');
-                  }}
-                  className="py-3 rounded-xl font-bold text-xs uppercase tracking-widest bg-slate-100 hover:bg-slate-200 dark:bg-white/5 text-slate-400 cursor-pointer"
-                >
-                  Abbrechen
-                </button>
-                <button
-                  onClick={handleAdminGate}
-                  className="py-3 rounded-xl font-bold text-xs uppercase tracking-widest bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-600/20 cursor-pointer"
-                >
-                  Login
-                </button>
-              </div>
-            </div>
           </div>
         )}
 

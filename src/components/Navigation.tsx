@@ -7,6 +7,7 @@ interface NavigationProps {
   dark: boolean;
   toggleDark: () => void;
   onLogout: () => void;
+  isAdmin: boolean;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -15,6 +16,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   dark,
   toggleDark,
   onLogout,
+  isAdmin,
 }) => {
   return (
     <header className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-center mb-10 mt-8 lg:mt-0" id="main-navigation">
@@ -33,17 +35,19 @@ export const Navigation: React.FC<NavigationProps> = ({
 
         {/* Small Utility Controls: Admin, Darkmode, Logout */}
         <div className="flex items-center bg-white dark:bg-[#121212] p-1 rounded-2xl border border-slate-200 dark:border-[#262626] shadow-sm shrink-0">
-          <button
-            onClick={() => setActiveTab('admin')}
-            className={`p-3 rounded-xl transition-all active:scale-90 hover:scale-110 cursor-pointer ${
-              activeTab === 'admin' 
-                ? 'text-blue-500 bg-slate-100 dark:bg-slate-800 shadow-sm' 
-                : 'text-slate-650 hover:text-slate-900 dark:text-slate-350 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-850'
-            }`}
-            title="Admin-Bereich"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`p-3 rounded-xl transition-all active:scale-90 hover:scale-110 cursor-pointer ${
+                activeTab === 'admin' 
+                  ? 'text-blue-500 bg-slate-100 dark:bg-slate-800 shadow-sm' 
+                  : 'text-slate-650 hover:text-slate-900 dark:text-slate-350 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-850'
+              }`}
+              title="Admin-Bereich"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          )}
           
           <button
             onClick={toggleDark}

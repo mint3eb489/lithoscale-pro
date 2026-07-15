@@ -1,4 +1,4 @@
-import { Kitchen, AppConfig, Part } from '../types';
+import { Kitchen, AppConfig, Part, UserProfile } from '../types';
 
 interface PDFParams {
   kitchen: Kitchen;
@@ -9,6 +9,7 @@ interface PDFParams {
   vkStein: number;
   vkMiele: number;
   vkMoebel: number;
+  usersList?: UserProfile[];
 }
 
 export async function generateKitchenPDF(
@@ -151,7 +152,8 @@ export async function generateKitchenPDF(
       });
     }
 
-    const beraterObj = (config.beraterList || []).find((b) => String(b.id) === String(k.beraterId));
+    const beraterObj = (params.usersList || []).find((u) => String(u.id) === String(k.beraterId)) ||
+                       (config.beraterList || []).find((b) => String(b.id) === String(k.beraterId));
     let beraterBlock: any = { text: '', margin: [0, 0, 0, 0] };
     if (beraterObj && beraterObj.name) {
       let line2Parts: string[] = [];

@@ -65,7 +65,10 @@
 }
 
 .input-field-compact {
-  padding: 0.35rem 0.55rem !important;
+  padding-top: 0.35rem !important;
+  padding-bottom: 0.35rem !important;
+  padding-left: 0.55rem;
+  padding-right: 0.55rem;
   font-size: 11px !important;
   border-radius: 0.375rem !important;
 }
@@ -95,6 +98,30 @@
 .dark .card {
   background: #121212;
   border-color: #262626;
+}
+
+/* Tooltip friendly card that does not clip contents but maintains visual styling */
+.card-tooltip-friendly {
+  position: relative;
+  background: white;
+  border-radius: 1.25rem;
+  border: 1px solid var(--color-slate-200);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .card-tooltip-friendly {
+  background: #121212;
+  border-color: #262626;
+}
+
+.card-tooltip-friendly:hover {
+  border-color: var(--color-slate-300) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+}
+
+.dark .card-tooltip-friendly:hover {
+  border-color: #3a3a3a !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.35), 0 8px 10px -6px rgba(0, 0, 0, 0.35);
 }
 
 /* Premium global Hover and Shadow effects for every card */

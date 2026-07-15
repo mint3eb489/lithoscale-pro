@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Kitchen, AppConfig, KitchenItem } from '../types';
+import { Kitchen, AppConfig, KitchenItem, UserProfile } from '../types';
 import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
@@ -18,6 +18,7 @@ interface KitchenTabProps {
     factor?: number;
     moebelFactor?: number;
   };
+  usersList?: UserProfile[];
 }
 
 export const KitchenTab: React.FC<KitchenTabProps> = ({
@@ -32,6 +33,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   onGeneratePDFPreview,
   onImportCaratXLSX,
   personalFactors,
+  usersList = [],
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -123,7 +125,8 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     }
   });
 
-  const beraterObj = (config.beraterList || []).find((b) => String(b.id) === String(kitchen.beraterId));
+  const beraterObj = (usersList || []).find((u) => String(u.id) === String(kitchen.beraterId)) ||
+                     (config.beraterList || []).find((b) => String(b.id) === String(kitchen.beraterId));
 
   const updateField = (field: keyof Kitchen, val: any) => {
     // validations
@@ -261,11 +264,27 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                 className="input-field input-field-compact text-xs text-slate-800 dark:text-white cursor-pointer hover:border-slate-300 dark:hover:border-slate-700"
               >
                 <option value="" className="text-slate-650 dark:text-slate-400 font-bold">-- Bitte wählen --</option>
-                {(config.beraterList || []).map((b) => (
-                  <option key={b.id} value={b.id} className="text-slate-900 dark:text-white">
-                    {b.name}
-                  </option>
-                ))}
+                {(usersList && usersList.length > 0) ? (
+                  [...usersList]
+                    .sort((a, b) => {
+                      const aIsEnrico = a.name?.toLowerCase().includes("enrico belmonte");
+                      const bIsEnrico = b.name?.toLowerCase().includes("enrico belmonte");
+                      if (aIsEnrico && !bIsEnrico) return -1;
+                      if (!aIsEnrico && bIsEnrico) return 1;
+                      return 0;
+                    })
+                    .map((u) => (
+                      <option key={u.id} value={u.id} className="text-slate-900 dark:text-white">
+                        {u.name}
+                      </option>
+                    ))
+                ) : (
+                  (config.beraterList || []).map((b) => (
+                    <option key={b.id} value={b.id} className="text-slate-900 dark:text-white">
+                      {b.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>

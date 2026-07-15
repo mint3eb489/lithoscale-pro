@@ -33,7 +33,6 @@ export interface AppConfig {
   notch: number;
   hole: number;
   miter: number;
-  adminPass: string;
   moebelFactor: number;
   stats: {
     dekton: number[];
@@ -133,6 +132,7 @@ export interface UserProfile {
   name: string;
   role: 'sys-admin' | 'admin' | 'berater';
   createdAt: number;
+  phone?: string;
   stats?: {
     dekton?: number[];
     natur?: number[];
@@ -190,7 +190,6 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
     notch: 45,
     hole: 25,
     miter: 45,
-    adminPass: "1234",
     moebelFactor: 2.0,
     stats: { dekton: [], natur: [] },
     beraterList: [
