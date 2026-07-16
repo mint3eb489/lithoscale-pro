@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Stone, AppConfig, Part } from '../types';
-import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, RotateCcw, ChevronDown, Search } from 'lucide-react';
+import { Stone, AppConfig, Part, SavedCalculation } from '../types';
+import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, RotateCcw, ChevronDown, Search, Bookmark, Save, Trash2, Download } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
 interface CalculatorTabProps {
@@ -28,6 +28,10 @@ interface CalculatorTabProps {
     factor?: number;
     moebelFactor?: number;
   };
+  savedCalculations?: SavedCalculation[];
+  onSaveCalculation?: () => void;
+  onDeleteSavedCalculation?: (id: string, name: string) => void;
+  onLoadSavedCalculation?: (calc: SavedCalculation) => void;
 }
 
 export const CalculatorTab: React.FC<CalculatorTabProps> = ({
@@ -52,6 +56,10 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   onResetCalculator,
   openLightbox,
   personalFactors,
+  savedCalculations = [],
+  onSaveCalculation,
+  onDeleteSavedCalculation,
+  onLoadSavedCalculation,
 }) => {
   const [activeFilter, setActiveFilter] = useState<'all' | 'natur' | 'dekton'>('all');
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
@@ -59,6 +67,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
+  const [showSavedCalcsDropdownInCalc, setShowSavedCalcsDropdownInCalc] = useState(false);
 
   useEffect(() => {
     const handleFocusChange = () => {
@@ -97,6 +106,21 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
       document.removeEventListener('click', handleClickOutside);
     };
   }, [dropdownOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('#saved-calcs-dropdown-container-calc')) {
+        setShowSavedCalcsDropdownInCalc(false);
+      }
+    };
+    if (showSavedCalcsDropdownInCalc) {
+      document.addEventListener('click', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showSavedCalcsDropdownInCalc]);
 
   useEffect(() => {
     if (!dropdownOpen) {
@@ -275,14 +299,103 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/15 dark:bg-blue-400/15 blur-3xl z-0" />
 
           <div className="relative z-10">
-            <div className="flex justify-between items-center mb-5 border-b border-slate-200 dark:border-darkBorder pb-3">
-            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Konfiguration</h2>
-            {selectedStone && (
-              <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-black text-white ${(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'bg-red-500' : 'bg-green-500'}`}>
-                {(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'DEKTON' : 'NATURSTEIN'}
-              </span>
-            )}
-          </div>
+            <div className="flex justify-between items-center mb-5 border-b border-slate-200 dark:border-darkBorder pb-3 relative">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Konfiguration</h2>
+                
+                {/* Dezent Actions */}
+                <div className="flex items-center gap-1 ml-1">
+                  {onSaveCalculation && (
+                    <button
+                      onClick={onSaveCalculation}
+                      type="button"
+                      className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-all cursor-pointer"
+                      title="Kalkulation speichern"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  {onLoadSavedCalculation && (
+                    <div className="relative" id="saved-calcs-dropdown-container-calc">
+                      <button
+                        onClick={() => setShowSavedCalcsDropdownInCalc(!showSavedCalcsDropdownInCalc)}
+                        type="button"
+                        className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-all cursor-pointer"
+                        title="Gespeicherte Kalkulation laden"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
+
+                      {showSavedCalcsDropdownInCalc && (
+                        <div className="absolute left-0 top-full mt-2 w-64 bg-white dark:bg-[#161616] border border-slate-200 dark:border-darkBorder rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
+                          <div className="px-3 py-1.5 text-[8.5px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-darkBorder mb-1 flex justify-between items-center">
+                            <span>Kalkulation laden</span>
+                            <button
+                              type="button"
+                              onClick={() => setShowSavedCalcsDropdownInCalc(false)}
+                              className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 p-0.5 rounded transition-colors cursor-pointer"
+                              title="Schließen"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="max-h-48 overflow-y-auto">
+                            {savedCalculations.length === 0 ? (
+                              <div className="px-3 py-3 text-xs text-slate-450 dark:text-slate-500 text-center italic">
+                                Keine gespeicherten Kalkulationen
+                              </div>
+                            ) : (
+                              savedCalculations.map((calc) => (
+                                <div key={calc.id} className="w-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex items-center justify-between px-3 py-2 group">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      onLoadSavedCalculation(calc);
+                                      setShowSavedCalcsDropdownInCalc(false);
+                                    }}
+                                    className="flex-1 text-left flex flex-col gap-0.5 min-w-0 mr-2"
+                                  >
+                                    <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                                      {calc.name}
+                                    </div>
+                                    <div className="flex justify-between items-center text-[9px] text-slate-450 dark:text-slate-500 font-mono w-full">
+                                      <span className="truncate max-w-[120px]">
+                                        {calc.stoneName}
+                                      </span>
+                                      <span className="text-blue-500 font-bold shrink-0">
+                                        {formatMoney(calc.vk)}
+                                      </span>
+                                    </div>
+                                  </button>
+                                  {onDeleteSavedCalculation && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        onDeleteSavedCalculation(calc.id, calc.name);
+                                      }}
+                                      className="text-red-500 hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/20 p-1 rounded-lg active:scale-95 transition-all shrink-0 opacity-60 hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                                      title="Kalkulation löschen"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {selectedStone && (
+                <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-black text-white ${(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'bg-red-500' : 'bg-green-500'}`}>
+                  {(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'DEKTON' : 'NATURSTEIN'}
+                </span>
+              )}
+            </div>
 
           <div className="flex flex-col sm:flex-row gap-5 mb-5">
             <div
@@ -905,6 +1018,88 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           </div> {/* end of relative z-10 */}
         </div>
       </div>
+
+      {/* GESPEICHERTE KALKULATIONEN CARD */}
+      {savedCalculations.length > 0 && (
+        <div className="card p-6 md:p-8 mt-8 bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-3xl">
+          <div className="flex justify-between items-center mb-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center">
+                <Bookmark className="w-4 h-4 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                  Gespeicherte Steinkalkulationen
+                </h3>
+                <p className="text-[10px] text-slate-500">
+                  Diese Kalkulationen sind für spätere Angebote im System hinterlegt.
+                </p>
+              </div>
+            </div>
+            <span className="text-[10px] font-black bg-blue-50 dark:bg-blue-950/30 text-blue-650 dark:text-blue-400 px-2 py-1 rounded-full">
+              {savedCalculations.length} Entwürfe
+            </span>
+          </div>
+
+          <div className="overflow-x-auto -mx-6 md:-mx-8 px-6 md:px-8">
+            <table className="w-full text-left border-collapse min-w-[600px]">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-darkBorder text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  <th className="py-3 px-4">Name</th>
+                  <th className="py-3 px-4">Material</th>
+                  <th className="py-3 px-4 text-center">Teile</th>
+                  <th className="py-3 px-4 text-right">EK Netto</th>
+                  <th className="py-3 px-4 text-right">VK Brutto</th>
+                  <th className="py-3 px-4 text-right">Aktionen</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-darkBorder text-xs">
+                {savedCalculations.map((calc) => (
+                  <tr key={calc.id} className="hover:bg-slate-50 dark:hover:bg-white/2 cursor-default group transition-colors">
+                    <td className="py-4 px-4 font-bold text-slate-900 dark:text-slate-100">
+                      {calc.name}
+                    </td>
+                    <td className="py-4 px-4 text-slate-650 dark:text-slate-400">
+                      <span className={`inline-block w-2 h-2 rounded-full mr-2 ${calc.isDekton ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                      {calc.isDekton ? 'Dekton' : 'Naturstein'} {calc.stoneName}
+                    </td>
+                    <td className="py-4 px-4 text-center font-mono text-slate-555">
+                      {calc.parts.length}x
+                    </td>
+                    <td className="py-4 px-4 text-right font-mono text-slate-555">
+                      {formatMoney(calc.ek)}
+                    </td>
+                    <td className="py-4 px-4 text-right font-mono text-blue-500 font-bold">
+                      {formatMoney(calc.vk)}
+                    </td>
+                    <td className="py-4 px-4 text-right">
+                      <div className="flex justify-end gap-2">
+                        {onLoadSavedCalculation && (
+                          <button
+                            onClick={() => onLoadSavedCalculation(calc)}
+                            className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-black uppercase tracking-widest text-[9px] px-2.5 py-1.5 rounded-lg active:scale-95 transition-all"
+                          >
+                            Laden
+                          </button>
+                        )}
+                        {onDeleteSavedCalculation && (
+                          <button
+                            onClick={() => onDeleteSavedCalculation(calc.id, calc.name)}
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 p-1.5 rounded-lg active:scale-95 transition-all"
+                            title="Löschen"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* MOBILE BOTTOM SLIDING SHEET */}
       <div

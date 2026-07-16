@@ -143,6 +143,21 @@ export interface UserProfile {
   };
 }
 
+export interface SavedCalculation {
+  id: string;
+  name: string;
+  stoneId: string;
+  stoneName: string;
+  isDekton: boolean;
+  parts: Part[];
+  miterInput: string;
+  gluingCheck: boolean;
+  activeServices: { measure: boolean; delivery: boolean };
+  ek: number;
+  vk: number;
+  timestamp: number;
+}
+
 export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
   stones: [
     { name: "Marinace Black 2cm", price: 325, isDekton: false, image: "" },

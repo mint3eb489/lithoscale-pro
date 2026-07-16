@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react';
-import { Kitchen, AppConfig, KitchenItem, UserProfile } from '../types';
-import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff } from 'lucide-react';
+import React, { useRef, useState, useEffect } from 'react';
+import { Kitchen, AppConfig, KitchenItem, UserProfile, SavedCalculation } from '../types';
+import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
 interface KitchenTabProps {
@@ -19,6 +19,9 @@ interface KitchenTabProps {
     moebelFactor?: number;
   };
   usersList?: UserProfile[];
+  savedCalculations?: SavedCalculation[];
+  onLoadSavedCalculation?: (calc: SavedCalculation) => void;
+  onDeleteSavedCalculation?: (id: string, name: string) => void;
 }
 
 export const KitchenTab: React.FC<KitchenTabProps> = ({
@@ -34,8 +37,27 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   onImportCaratXLSX,
   personalFactors,
   usersList = [],
+  savedCalculations = [],
+  onLoadSavedCalculation,
+  onDeleteSavedCalculation,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showSavedCalcsDropdown, setShowSavedCalcsDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowSavedCalcsDropdown(false);
+      }
+    }
+    if (showSavedCalcsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showSavedCalcsDropdown]);
 
   const renderSafeHTML = (htmlStr: string) => {
     if (!htmlStr) return null;
@@ -324,16 +346,89 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
           </div>
 
           <div className="border-t border-slate-200 dark:border-darkBorder pt-3.5">
-            <div className="flex justify-between items-end mb-1.5">
+            <div className="flex justify-between items-center mb-1.5 flex-wrap gap-2">
               <label className="text-[9px] font-black text-slate-650 dark:text-slate-300 uppercase">Arbeitsplatte (Bezeichnung & Preis)</label>
-              <button
-                type="button"
-                onClick={onPullSelectedStonePrice}
-                className="text-[8px] font-black bg-slate-100 dark:bg-[#1e1e1e] text-slate-650 dark:text-slate-300 px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
-              >
-                <Sparkles className="w-2.5 h-2.5 text-blue-500" />
-                Aus Rechner übernehmen
-              </button>
+              <div className="flex gap-1 items-center relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={onPullSelectedStonePrice}
+                  className="text-[8px] font-black bg-slate-100 dark:bg-[#1e1e1e] text-slate-650 dark:text-slate-300 px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-800 active:scale-95 transition-all flex items-center gap-1 cursor-pointer"
+                  title="Aktuelle Kalkulation aus dem Rechner laden"
+                >
+                  <Sparkles className="w-2.5 h-2.5 text-blue-500" />
+                  Aus Rechner
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowSavedCalcsDropdown(!showSavedCalcsDropdown)}
+                  className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-all cursor-pointer"
+                  title="Gespeicherte Kalkulationen anzeigen"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+
+                {showSavedCalcsDropdown && (
+                  <div className="absolute right-0 top-full mt-1.5 w-64 bg-white dark:bg-[#161616] border border-slate-200 dark:border-darkBorder rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
+                    <div className="px-3 py-1.5 text-[8.5px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-darkBorder mb-1 flex justify-between items-center">
+                      <span>Kalkulation auswählen</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowSavedCalcsDropdown(false)}
+                        className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 p-0.5 rounded transition-colors cursor-pointer"
+                        title="Schließen"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto">
+                      {savedCalculations.length === 0 ? (
+                        <div className="px-3 py-3 text-xs text-slate-450 dark:text-slate-500 text-center italic">
+                          Keine gespeicherten Kalkulationen vorhanden
+                        </div>
+                      ) : (
+                        savedCalculations.map((calc) => (
+                          <div key={calc.id} className="w-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex items-center justify-between px-3 py-2 group">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (onLoadSavedCalculation) {
+                                  onLoadSavedCalculation(calc);
+                                }
+                                setShowSavedCalcsDropdown(false);
+                              }}
+                              className="flex-1 text-left flex flex-col gap-0.5 min-w-0 mr-2"
+                            >
+                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                                {calc.name}
+                              </div>
+                              <div className="flex justify-between items-center text-[9px] text-slate-450 dark:text-slate-500 font-mono w-full">
+                                <span className="truncate max-w-[120px]">
+                                  {calc.stoneName}
+                                </span>
+                                <span className="text-blue-500 font-bold shrink-0">
+                                  {formatMoney(calc.vk)}
+                                </span>
+                              </div>
+                            </button>
+                            {onDeleteSavedCalculation && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onDeleteSavedCalculation(calc.id, calc.name);
+                                }}
+                                className="text-red-500 hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/20 p-1 rounded-lg active:scale-95 transition-all shrink-0 opacity-60 hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                                title="Kalkulation löschen"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <input

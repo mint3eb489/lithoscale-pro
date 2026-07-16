@@ -58,6 +58,26 @@
         "stats": { "type": "object" }
       },
       "required": ["id", "email", "name", "role", "createdAt"]
+    },
+    "SavedCalculation": {
+      "title": "SavedCalculation",
+      "description": "Calculated stone dimensions and options saved by the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "stoneId": { "type": "string" },
+        "stoneName": { "type": "string" },
+        "isDekton": { "type": "boolean" },
+        "parts": { "type": "array" },
+        "miterInput": { "type": "string" },
+        "gluingCheck": { "type": "boolean" },
+        "activeServices": { "type": "object" },
+        "ek": { "type": "number" },
+        "vk": { "type": "number" },
+        "timestamp": { "type": "integer" }
+      },
+      "required": ["id", "name", "stoneId", "stoneName", "parts", "ek", "vk", "timestamp"]
     }
   },
   "firestore": {
@@ -72,6 +92,10 @@
     "/artifacts/{appId}/public/data/users/{userId}": {
       "schema": "UserProfile",
       "description": "Registered and pre-registered system users"
+    },
+    "/artifacts/{appId}/public/data/savedCalculations/{calcId}": {
+      "schema": "SavedCalculation",
+      "description": "Saved slab calculation presets"
     }
   }
 }

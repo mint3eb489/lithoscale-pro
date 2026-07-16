@@ -111,5 +111,31 @@ service cloud.firestore {
       );
       allow delete: if isSignedIn() && isAdmin(appId);
     }
+
+    // SavedCalculations Collection Rule matching blueprint path: /artifacts/{appId}/public/data/savedCalculations/{calcId}
+    match /artifacts/{appId}/public/data/savedCalculations/{calcId} {
+      
+      function isValidSavedCalculation(data) {
+        return data.keys().hasAll(['id', 'name', 'stoneId', 'stoneName', 'parts', 'ek', 'vk', 'timestamp'])
+          && data.id is string
+          && data.name is string
+          && data.name.size() <= 200
+          && data.stoneId is string
+          && data.stoneName is string
+          && data.parts is list
+          && data.ek is number
+          && data.vk is number
+          && data.timestamp is int;
+      }
+
+      allow read: if isSignedIn();
+      allow create, update: if isUserVerified()
+        && isValidId(appId)
+        && isValidId(calcId)
+        && isValidSavedCalculation(request.resource.data);
+      allow delete: if isUserVerified()
+        && isValidId(appId)
+        && isValidId(calcId);
+    }
   }
 }

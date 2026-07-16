@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db, internalAppId, handleFirestoreError, OperationType } from './firebase';
-import { Stone, AppConfig, Part, Kitchen, Offer, DEFAULTS, UserProfile } from './types';
+import { Stone, AppConfig, Part, Kitchen, Offer, DEFAULTS, UserProfile, SavedCalculation } from './types';
 import { DEFAULT_STONES } from './data/defaultStones';
 import { Navigation } from './components/Navigation';
 import { CalculatorTab } from './components/CalculatorTab';
@@ -100,6 +100,13 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const [savedCalculations, setSavedCalculations] = useState<SavedCalculation[]>(() => {
+    try {
+      const cached = localStorage.getItem('ls_saved_calculations');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return [];
+  });
 
   const personalFactors = {
     factor: userProfile?.customFactors?.factor ?? config.factor,
@@ -228,6 +235,7 @@ export default function App() {
     let unsubSettings: (() => void) | undefined;
     let unsubOffers: (() => void) | undefined;
     let unsubProfile: (() => void) | undefined;
+    let unsubSavedCalculations: (() => void) | undefined;
 
     const unsubAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -238,6 +246,7 @@ export default function App() {
         unsubSettings = subscribeToCloudSettings();
         unsubOffers = subscribeToOffers();
         unsubProfile = subscribeToUserProfile(user);
+        unsubSavedCalculations = subscribeToSavedCalculations();
       } else {
         setCloudStatus('Anmeldung erforderlich');
         setCloudStatusColor('bg-amber-500');
@@ -246,6 +255,7 @@ export default function App() {
         if (unsubSettings) unsubSettings();
         if (unsubOffers) unsubOffers();
         if (unsubProfile) unsubProfile();
+        if (unsubSavedCalculations) unsubSavedCalculations();
       }
     });
 
@@ -254,6 +264,7 @@ export default function App() {
       if (unsubSettings) unsubSettings();
       if (unsubOffers) unsubOffers();
       if (unsubProfile) unsubProfile();
+      if (unsubSavedCalculations) unsubSavedCalculations();
     };
   }, []);
 
@@ -395,6 +406,24 @@ export default function App() {
       },
       (err) => {
         console.error('Offers snapshot error:', err);
+      }
+    );
+  };
+
+  const subscribeToSavedCalculations = () => {
+    const collRef = collection(db, 'artifacts', internalAppId, 'public', 'data', 'savedCalculations');
+    return onSnapshot(
+      collRef,
+      (snap) => {
+        const list: SavedCalculation[] = [];
+        snap.forEach((doc) => {
+          list.push(doc.data() as SavedCalculation);
+        });
+        setSavedCalculations(list);
+        localStorage.setItem('ls_saved_calculations', JSON.stringify(list));
+      },
+      (err) => {
+        console.error('Saved calculations snapshot error:', err);
       }
     );
   };
@@ -1170,6 +1199,150 @@ export default function App() {
     }
   };
 
+  const handleSaveCalculation = async (name: string) => {
+    if (!name || name.trim() === '') {
+      showToast('Name der Kalkulation fehlt!');
+      return;
+    }
+    const s = stones.find((x) => x.id === selectedStoneId) || stones[0];
+    if (!s) {
+      showToast('Keine Steine vorhanden.');
+      return;
+    }
+
+    const isDek = s.isDekton === true || s.isDekton === 'true';
+    const edgeRate = isDek ? config.dekEdge : config.natEdge;
+    const rateFlush = isDek ? config.dekCutFlush : config.natCutFlush;
+    const rateUnder = isDek ? config.dekCutUnder : config.natCutUnder;
+    const rateTop = isDek ? (config.dekCutTop || 0) : (config.natCutTop || 0);
+
+    let totalSqm = 0;
+    let totalLfm = 0;
+
+    parts.forEach((p) => {
+      const l = parseFloat(p.l.replace(',', '.')) || 0;
+      const w = parseFloat(p.w.replace(',', '.')) || 0;
+      totalSqm += (l * w) / 10000;
+      if (p.edges.v) totalLfm += l / 100;
+      if (p.edges.h) totalLfm += l / 100;
+      if (p.edges.l) totalLfm += w / 100;
+      if (p.edges.r) totalLfm += w / 100;
+    });
+
+    const miterMeters = (parseFloat(miterInput.replace(',', '.')) || 0) / 100;
+    const gluingCost = gluingCheck ? (config.gluing || 0) : 0;
+
+    const sumMat = totalSqm * s.price;
+    const sumEdge = totalLfm * edgeRate;
+
+    const sumCut =
+      flushCount * rateFlush +
+      underCount * rateUnder +
+      topCount * rateTop +
+      notchCount * (config.notch || 0) +
+      holeCount * (config.hole || 0);
+
+    const sumExtra =
+      miterMeters * (config.miter || 0) +
+      gluingCost +
+      (activeServices.measure ? config.measure : 0) +
+      (activeServices.delivery ? config.delivery : 0);
+
+    const ek = sumMat + sumEdge + sumCut + sumExtra;
+    const vk = ek * personalFactors.factor;
+
+    const newCalc: SavedCalculation = {
+      id: 'calc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      name: name.trim(),
+      stoneId: s.id,
+      stoneName: s.name,
+      isDekton: isDek,
+      parts,
+      miterInput,
+      gluingCheck,
+      activeServices,
+      ek,
+      vk,
+      timestamp: Date.now(),
+    };
+
+    const updatedList = [newCalc, ...savedCalculations];
+    setSavedCalculations(updatedList);
+    localStorage.setItem('ls_saved_calculations', JSON.stringify(updatedList));
+
+    if (currentUser) {
+      setCloudStatus('Speichere Kalkulation...');
+      setCloudStatusColor('bg-blue-500 animate-pulse');
+      try {
+        const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'savedCalculations', newCalc.id);
+        await setDoc(docRef, newCalc);
+        showToast(`Kalkulation "${newCalc.name}" gespeichert.`);
+        setCloudStatus('Cloud Aktiv');
+        setCloudStatusColor('bg-green-500');
+      } catch (err) {
+        handleFirestoreError(err, OperationType.WRITE, `savedCalculations/${newCalc.id}`);
+      }
+    } else {
+      showToast(`Kalkulation "${newCalc.name}" lokal gespeichert.`);
+    }
+  };
+
+  const handleDeleteSavedCalculation = async (id: string, name: string) => {
+    requestConfirm('Kalkulation löschen?', `Möchtest du die gespeicherte Steinkalkulation "${name}" wirklich löschen?`, async () => {
+      const updatedList = savedCalculations.filter((c) => c.id !== id);
+      setSavedCalculations(updatedList);
+      localStorage.setItem('ls_saved_calculations', JSON.stringify(updatedList));
+
+      if (currentUser) {
+        setCloudStatus('Lösche Kalkulation...');
+        setCloudStatusColor('bg-blue-500 animate-pulse');
+        try {
+          const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'savedCalculations', id);
+          await deleteDoc(docRef);
+          showToast(`Kalkulation "${name}" gelöscht.`);
+          setCloudStatus('Cloud Aktiv');
+          setCloudStatusColor('bg-green-500');
+        } catch (err) {
+          handleFirestoreError(err, OperationType.DELETE, `savedCalculations/${id}`);
+        }
+      } else {
+        showToast(`Kalkulation "${name}" lokal gelöscht.`);
+      }
+    });
+  };
+
+  const handleLoadCalculationIntoCalculator = (calc: SavedCalculation) => {
+    setParts(calc.parts);
+    setSelectedStoneId(calc.stoneId);
+    setMiterInput(calc.miterInput || '');
+    setGluingCheck(calc.gluingCheck || false);
+    if (calc.activeServices) {
+      setActiveServices(calc.activeServices);
+    }
+    showToast(`Kalkulation "${calc.name}" in Rechner geladen!`);
+    setActiveTab('calc');
+  };
+
+  const handleLoadCalculationIntoKitchen = (calc: SavedCalculation) => {
+    setKitchen((prev) => ({
+      ...prev,
+      apName: `${calc.isDekton ? 'Dekton' : 'Naturstein'} ${calc.stoneName}`,
+      steinEK: calc.ek.toFixed(2).replace('.', ','),
+      steinVK: calc.vk.toFixed(2).replace('.', ','),
+    }));
+
+    // Also load it into the active calculator state so that it is "memorized"
+    setParts(calc.parts);
+    setSelectedStoneId(calc.stoneId);
+    setMiterInput(calc.miterInput || '');
+    setGluingCheck(calc.gluingCheck || false);
+    if (calc.activeServices) {
+      setActiveServices(calc.activeServices);
+    }
+
+    showToast(`Kalkulation "${calc.name}" ins Angebot geladen!`);
+  };
+
   // Carat Importer Logic from spreadsheet rows parser
   const processCaratRows = (rows: any[][]) => {
     let sumMoebelEK = 0;
@@ -1509,6 +1682,10 @@ export default function App() {
                 setLightboxOpen(true);
               }}
               personalFactors={personalFactors}
+              savedCalculations={savedCalculations}
+              onSaveCalculation={() => requestPrompt('Kalkulation speichern', 'Bitte gib einen Namen für diese Steinkalkulation ein.', '', 'Kommissionsname', (name) => handleSaveCalculation(name))}
+              onDeleteSavedCalculation={handleDeleteSavedCalculation}
+              onLoadSavedCalculation={handleLoadCalculationIntoCalculator}
             />
           )}
 
@@ -1575,6 +1752,9 @@ export default function App() {
               onImportCaratXLSX={handleImportCaratXLSX}
               personalFactors={personalFactors}
               usersList={usersList}
+              savedCalculations={savedCalculations}
+              onLoadSavedCalculation={handleLoadCalculationIntoKitchen}
+              onDeleteSavedCalculation={handleDeleteSavedCalculation}
             />
           )}
 
@@ -2112,9 +2292,9 @@ export default function App() {
 
         {/* 2. DOCK SIDE COMPARISON POPUP SCREEN */}
         {compareModalOpen && (
-          <div className="fixed inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 lg:p-10">
-            <div className="bg-white dark:bg-[#121212] w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-full">
-              <div className="p-4 md:p-6 border-b border-slate-200 dark:border-darkBorder flex justify-between items-center bg-slate-50 dark:bg-[#181818]">
+          <div className="fixed inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 lg:p-8">
+            <div className="bg-white dark:bg-[#121212] w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="p-4 md:p-6 border-b border-slate-250 dark:border-zinc-850 flex justify-between items-center bg-slate-50 dark:bg-[#181818]">
                 <div>
                   <h2 className="text-xl font-black text-slate-900 dark:text-white">Direkt-Vergleich</h2>
                   <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">Kalkuliert mit deiner aktuellen Stückliste</p>
@@ -2130,7 +2310,7 @@ export default function App() {
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col md:flex-row gap-6 md:gap-10">
+              <div className="flex-1 overflow-y-auto p-4 md:p-8 flex flex-col md:flex-row gap-6 md:gap-8 pb-16">
                 {[compareList[0], compareList[1]].map((id, index) => {
                   const s = stones.find((x) => x.id === id);
                   if (!s) return null;
@@ -2177,73 +2357,75 @@ export default function App() {
                   const vk = ek * config.factor;
 
                   return (
-                    <div key={id} className="flex-1 bg-slate-50 dark:bg-zinc-900/40 border border-slate-150 dark:border-zinc-800/80 rounded-2xl p-4 md:p-6 flex flex-col justify-between">
-                      <div>
-                        {/* Compact Row Header */}
-                        <div className="flex items-center gap-4 text-left border-b border-slate-200 dark:border-zinc-800/80 pb-4">
-                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-black border border-slate-200 dark:border-darkBorder shadow-sm shrink-0 relative">
-                            {s.image ? (
-                              <img src={s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`} className="w-full h-full object-cover" alt="" />
-                            ) : (
-                              <span className="text-[9px] text-slate-400 font-extrabold uppercase">Kein Bild</span>
-                            )}
-                            <span className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full border border-white/20 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                    <div key={id} className="flex-1 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 md:p-6 flex flex-col justify-between shadow-sm">
+                      <div className="flex-1 flex flex-col justify-between">
+                        <div>
+                          {/* Compact Row Header */}
+                          <div className="flex items-center gap-4 text-left border-b border-slate-200 dark:border-zinc-800/80 pb-4">
+                            <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-black border border-slate-200 dark:border-darkBorder shadow-sm shrink-0 relative">
+                              {s.image ? (
+                                <img src={s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`} className="w-full h-full object-cover" alt="" />
+                              ) : (
+                                <span className="text-[9px] text-slate-400 font-extrabold uppercase">Kein Bild</span>
+                              )}
+                              <span className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full border border-white/20 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-white mb-1 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`}>
+                                {s.isDekton ? 'Dekton' : 'Naturstein'}
+                              </span>
+                              <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white truncate leading-tight" title={s.name}>
+                                {s.name}
+                              </h3>
+                              <p className="text-[10px] font-mono text-slate-500 mt-0.5">
+                                Basis: {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(s.price)} / m²
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-white mb-1 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`}>
-                              {s.isDekton ? 'Dekton' : 'Naturstein'}
-                            </span>
-                            <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white truncate leading-tight" title={s.name}>
-                              {s.name}
-                            </h3>
-                            <p className="text-[10px] font-mono text-slate-500 mt-0.5">
-                              Basis: {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(s.price)} / m²
+
+                          {/* Detailed Calculation Breakdown */}
+                          <div className="mt-4 space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                            <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-200/50 dark:border-zinc-800/50">
+                              <span>Material ({totalSqm.toFixed(2)} m²)</span>
+                              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumMat * config.factor)}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-200/50 dark:border-zinc-800/50">
+                              <span>Kanten ({totalLfm.toFixed(2)} lfm)</span>
+                              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumEdge * config.factor)}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-200/50 dark:border-zinc-800/50">
+                              <span>Ausschnitte & Bohrungen</span>
+                              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumCut * config.factor)}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-200/50 dark:border-zinc-800/50">
+                              <span>Zusatz & Service</span>
+                              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumExtra * config.factor)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Main Price Box & Choice Button */}
+                        <div className="mt-6">
+                          <div className="w-full bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 mb-4 relative overflow-hidden text-center shrink-0">
+                            <div className="absolute inset-0 bg-blue-500/5" />
+                            <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-0.5 relative">Verkaufspreis Brutto (Gesamt)</p>
+                            <p className="text-2xl md:text-3xl font-black text-blue-500 font-mono relative">
+                              {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(vk)}
                             </p>
                           </div>
-                        </div>
 
-                        {/* Detailed Calculation Breakdown */}
-                        <div className="mt-4 space-y-2 text-xs text-slate-600 dark:text-slate-400">
-                          <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100 dark:border-zinc-800/50">
-                            <span>Material ({totalSqm.toFixed(2)} m²)</span>
-                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumMat * config.factor)}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100 dark:border-zinc-800/50">
-                            <span>Kanten ({totalLfm.toFixed(2)} lfm)</span>
-                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumEdge * config.factor)}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100 dark:border-zinc-800/50">
-                            <span>Ausschnitte & Bohrungen</span>
-                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumCut * config.factor)}</span>
-                          </div>
-                          <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100 dark:border-zinc-800/50">
-                            <span>Zusatz & Service</span>
-                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumExtra * config.factor)}</span>
-                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedStoneId(id);
+                              setCompareModalOpen(false);
+                              setCompareList([]);
+                              setActiveTab('calc');
+                            }}
+                            className="w-full py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest hover:bg-slate-900 dark:hover:bg-slate-100 transition-all shadow-md text-[10px] cursor-pointer shrink-0"
+                          >
+                            Diesen Stein wählen
+                          </button>
                         </div>
-                      </div>
-
-                      {/* Main Price Box & Choice Button */}
-                      <div>
-                        <div className="w-full bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 mt-6 mb-4 relative overflow-hidden text-center shrink-0">
-                          <div className="absolute inset-0 bg-blue-500/5" />
-                          <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-0.5 relative">Verkaufspreis Brutto (Gesamt)</p>
-                          <p className="text-2xl md:text-3xl font-black text-blue-500 font-mono relative">
-                            {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(vk)}
-                          </p>
-                        </div>
-
-                        <button
-                          onClick={() => {
-                            setSelectedStoneId(id);
-                            setCompareModalOpen(false);
-                            setCompareList([]);
-                            setActiveTab('calc');
-                          }}
-                          className="w-full py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest hover:scale-[1.02] active:scale-98 transition-all shadow-md text-[10px] cursor-pointer shrink-0"
-                        >
-                          Diesen Stein wählen
-                        </button>
                       </div>
                     </div>
                   );
