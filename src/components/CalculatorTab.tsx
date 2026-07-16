@@ -267,7 +267,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   }, [activeFilter, filteredStones, selectedStoneId, setSelectedStoneId]);
 
   return (
-    <div id="tab-calc" className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch pb-36 lg:pb-0">
+    <div id="tab-calc" className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start pb-36 lg:pb-0">
       <div className="lg:col-span-3 space-y-5">
         <div className="card p-6 relative overflow-hidden group/card hover:border-blue-500/30 transition-all duration-300">
           
@@ -726,8 +726,8 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
       </div>
 
       {/* SUMMARY SIDEBAR - DESKTOP */}
-      <div className="hidden lg:block lg:col-span-2 text-slate-900">
-        <div className="p-6 md:p-8 bg-black text-white rounded-3xl sticky top-10 shadow-2xl border border-darkBorder transition-all duration-300 relative overflow-hidden group/card">
+      <div className="hidden lg:block lg:col-span-2 lg:sticky lg:top-10 text-slate-900">
+        <div className="p-6 md:p-8 bg-black text-white rounded-3xl shadow-2xl border border-darkBorder transition-all duration-300 relative overflow-hidden group/card">
           
           {/* Der Glow-Hintergrundkreis */}
           <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/25 blur-3xl z-0" />

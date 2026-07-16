@@ -225,7 +225,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   };
 
   return (
-    <div id="tab-kitchen" className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-stretch pb-36 lg:pb-0">
+    <div id="tab-kitchen" className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start pb-36 lg:pb-0">
       <div className="lg:col-span-3 space-y-3.5">
         <div className="card p-4 relative overflow-hidden group/card hover:border-blue-500/35 hover:shadow-xl transition-all duration-300">
           
@@ -355,20 +355,18 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                   />
                   <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-blue-500">€</span>
                 </div>
-                {kitchen.showMoebelEK && (
-                  <div className="relative w-full">
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      value={kitchen.steinEK || ''}
-                      onChange={(e) => updateField('steinEK', e.target.value)}
-                      className="input-field input-field-compact text-[9px] py-1 font-mono text-center px-2 text-slate-650 dark:text-slate-400 border-dashed bg-slate-50 dark:bg-black border-slate-300 dark:border-darkBorder"
-                      placeholder="EK Netto"
-                      title="EK (Nur für interne Übersicht)"
-                    />
-                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-500">€</span>
-                  </div>
-                )}
+                <div className="relative w-full">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={kitchen.steinEK || ''}
+                    onChange={(e) => updateField('steinEK', e.target.value)}
+                    className="input-field input-field-compact text-[9px] py-1 font-mono text-center px-2 text-slate-650 dark:text-slate-400 border-dashed bg-slate-50 dark:bg-black border-slate-300 dark:border-darkBorder"
+                    placeholder="EK Netto"
+                    title="EK (Nur für interne Übersicht)"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-500">€</span>
+                </div>
               </div>
             </div>
             {kitchen.showMoebelEK && (
@@ -652,8 +650,8 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
       </div>
 
       {/* FIXED OFFERS SIDEBAR COMPONENT */}
-      <div className="lg:col-span-2 space-y-4">
-        <div className="p-4 md:p-5 bg-black text-white rounded-2xl shadow-2xl border border-slate-900 sticky top-10 transition-all duration-300 relative overflow-hidden group/card">
+      <div className="lg:col-span-2 lg:sticky lg:top-10 space-y-4">
+        <div className="p-4 md:p-5 bg-black text-white rounded-2xl shadow-2xl border border-slate-900 transition-all duration-300 relative overflow-hidden group/card">
           
           {/* Der Glow-Hintergrundkreis */}
           <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/25 blur-3xl z-0" />

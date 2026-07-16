@@ -1452,7 +1452,7 @@ export default function App() {
   const existingFolders = Array.from(new Set(visibleOffers.map(o => o.folder).filter(Boolean))) as string[];
 
   return (
-    <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans overflow-x-hidden">
+    <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans">
       
       {/* CLOUD CONNECTIVITY STATUS INDICATOR */}
       <div id="cloud-status" className="fixed top-4 right-4 text-[9px] font-bold uppercase tracking-widest z-50 flex flex-col items-end gap-1">
@@ -2177,38 +2177,74 @@ export default function App() {
                   const vk = ek * config.factor;
 
                   return (
-                    <div key={id} className="flex-1 flex flex-col items-center text-center">
-                      <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl overflow-hidden bg-slate-100 dark:bg-black mb-6 border border-slate-200 dark:border-darkBorder shadow-inner shrink-0 relative">
-                        {s.image ? (
-                          <img src={s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`} className="w-full h-full object-cover" alt="" />
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-extrabold uppercase">Kein Bild</span>
-                        )}
-                        <span className={`absolute top-2 right-2 w-6 h-6 rounded-full border border-white/20 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                      </div>
-                      
-                      <h3 className="text-xl md:text-2xl font-black text-slate-900 dark:text-white mb-2">{s.name}</h3>
-                      <p className="text-xs font-mono text-slate-500">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(s.price)} / m² (EK)</p>
+                    <div key={id} className="flex-1 bg-slate-50 dark:bg-zinc-900/40 border border-slate-150 dark:border-zinc-800/80 rounded-2xl p-4 md:p-6 flex flex-col justify-between">
+                      <div>
+                        {/* Compact Row Header */}
+                        <div className="flex items-center gap-4 text-left border-b border-slate-200 dark:border-zinc-800/80 pb-4">
+                          <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-black border border-slate-200 dark:border-darkBorder shadow-sm shrink-0 relative">
+                            {s.image ? (
+                              <img src={s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`} className="w-full h-full object-cover" alt="" />
+                            ) : (
+                              <span className="text-[9px] text-slate-400 font-extrabold uppercase">Kein Bild</span>
+                            )}
+                            <span className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full border border-white/20 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-white mb-1 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`}>
+                              {s.isDekton ? 'Dekton' : 'Naturstein'}
+                            </span>
+                            <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white truncate leading-tight" title={s.name}>
+                              {s.name}
+                            </h3>
+                            <p className="text-[10px] font-mono text-slate-500 mt-0.5">
+                              Basis: {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(s.price)} / m²
+                            </p>
+                          </div>
+                        </div>
 
-                      <div className="w-full bg-slate-100 dark:bg-[#1a1a1a] rounded-2xl p-6 mt-8 mb-6 relative overflow-hidden">
-                        <div className="absolute inset-0 bg-blue-500/5" />
-                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1 relative">VK Brutto (Gesamt)</p>
-                        <p className="text-3xl md:text-4xl font-black text-blue-500 font-mono relative">
-                          {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(vk)}
-                        </p>
+                        {/* Detailed Calculation Breakdown */}
+                        <div className="mt-4 space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                          <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100 dark:border-zinc-800/50">
+                            <span>Material ({totalSqm.toFixed(2)} m²)</span>
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumMat * config.factor)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100 dark:border-zinc-800/50">
+                            <span>Kanten ({totalLfm.toFixed(2)} lfm)</span>
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumEdge * config.factor)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100 dark:border-zinc-800/50">
+                            <span>Ausschnitte & Bohrungen</span>
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumCut * config.factor)}</span>
+                          </div>
+                          <div className="flex justify-between items-center py-1 border-b border-dashed border-slate-100 dark:border-zinc-800/50">
+                            <span>Zusatz & Service</span>
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-300">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(sumExtra * config.factor)}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <button
-                        onClick={() => {
-                          setSelectedStoneId(id);
-                          setCompareModalOpen(false);
-                          setCompareList([]);
-                          setActiveTab('calc');
-                        }}
-                        className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg text-xs cursor-pointer"
-                      >
-                        Diesen wählen
-                      </button>
+                      {/* Main Price Box & Choice Button */}
+                      <div>
+                        <div className="w-full bg-blue-500/10 dark:bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 mt-6 mb-4 relative overflow-hidden text-center shrink-0">
+                          <div className="absolute inset-0 bg-blue-500/5" />
+                          <p className="text-[9px] font-black text-blue-500 uppercase tracking-widest mb-0.5 relative">Verkaufspreis Brutto (Gesamt)</p>
+                          <p className="text-2xl md:text-3xl font-black text-blue-500 font-mono relative">
+                            {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(vk)}
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => {
+                            setSelectedStoneId(id);
+                            setCompareModalOpen(false);
+                            setCompareList([]);
+                            setActiveTab('calc');
+                          }}
+                          className="w-full py-2.5 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black uppercase tracking-widest hover:scale-[1.02] active:scale-98 transition-all shadow-md text-[10px] cursor-pointer shrink-0"
+                        >
+                          Diesen Stein wählen
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
