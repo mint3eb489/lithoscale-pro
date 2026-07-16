@@ -116,7 +116,7 @@ service cloud.firestore {
     match /artifacts/{appId}/public/data/savedCalculations/{calcId} {
       
       function isValidSavedCalculation(data) {
-        return data.keys().hasAll(['id', 'name', 'stoneId', 'stoneName', 'parts', 'ek', 'vk', 'timestamp'])
+        return data.keys().hasAll(['id', 'name', 'stoneId', 'stoneName', 'parts', 'ek', 'vk', 'timestamp', 'userId'])
           && data.id is string
           && data.name is string
           && data.name.size() <= 200
@@ -125,17 +125,19 @@ service cloud.firestore {
           && data.parts is list
           && data.ek is number
           && data.vk is number
-          && data.timestamp is int;
+          && data.timestamp is int
+          && data.userId == request.auth.uid;
       }
 
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create, update: if isUserVerified()
         && isValidId(appId)
         && isValidId(calcId)
         && isValidSavedCalculation(request.resource.data);
       allow delete: if isUserVerified()
         && isValidId(appId)
-        && isValidId(calcId);
+        && isValidId(calcId)
+        && resource.data.userId == request.auth.uid;
     }
   }
 }

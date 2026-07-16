@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Part, SavedCalculation } from '../types';
-import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, RotateCcw, ChevronDown, Search, Bookmark, Save, Trash2, Download } from 'lucide-react';
+import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, RotateCcw, ChevronDown, Search, Bookmark, Save, Trash2, Download, Cloud } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
 interface CalculatorTabProps {
@@ -323,7 +323,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                         className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-all cursor-pointer"
                         title="Gespeicherte Kalkulation laden"
                       >
-                        <Download className="w-3.5 h-3.5" />
+                        <Cloud className="w-3.5 h-3.5" />
                       </button>
 
                       {showSavedCalcsDropdownInCalc && (
@@ -1018,88 +1018,6 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           </div> {/* end of relative z-10 */}
         </div>
       </div>
-
-      {/* GESPEICHERTE KALKULATIONEN CARD */}
-      {savedCalculations.length > 0 && (
-        <div className="card p-6 md:p-8 mt-8 bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-3xl">
-          <div className="flex justify-between items-center mb-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center">
-                <Bookmark className="w-4 h-4 text-blue-500" />
-              </div>
-              <div>
-                <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-                  Gespeicherte Steinkalkulationen
-                </h3>
-                <p className="text-[10px] text-slate-500">
-                  Diese Kalkulationen sind für spätere Angebote im System hinterlegt.
-                </p>
-              </div>
-            </div>
-            <span className="text-[10px] font-black bg-blue-50 dark:bg-blue-950/30 text-blue-650 dark:text-blue-400 px-2 py-1 rounded-full">
-              {savedCalculations.length} Entwürfe
-            </span>
-          </div>
-
-          <div className="overflow-x-auto -mx-6 md:-mx-8 px-6 md:px-8">
-            <table className="w-full text-left border-collapse min-w-[600px]">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-darkBorder text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                  <th className="py-3 px-4">Name</th>
-                  <th className="py-3 px-4">Material</th>
-                  <th className="py-3 px-4 text-center">Teile</th>
-                  <th className="py-3 px-4 text-right">EK Netto</th>
-                  <th className="py-3 px-4 text-right">VK Brutto</th>
-                  <th className="py-3 px-4 text-right">Aktionen</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-darkBorder text-xs">
-                {savedCalculations.map((calc) => (
-                  <tr key={calc.id} className="hover:bg-slate-50 dark:hover:bg-white/2 cursor-default group transition-colors">
-                    <td className="py-4 px-4 font-bold text-slate-900 dark:text-slate-100">
-                      {calc.name}
-                    </td>
-                    <td className="py-4 px-4 text-slate-650 dark:text-slate-400">
-                      <span className={`inline-block w-2 h-2 rounded-full mr-2 ${calc.isDekton ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                      {calc.isDekton ? 'Dekton' : 'Naturstein'} {calc.stoneName}
-                    </td>
-                    <td className="py-4 px-4 text-center font-mono text-slate-555">
-                      {calc.parts.length}x
-                    </td>
-                    <td className="py-4 px-4 text-right font-mono text-slate-555">
-                      {formatMoney(calc.ek)}
-                    </td>
-                    <td className="py-4 px-4 text-right font-mono text-blue-500 font-bold">
-                      {formatMoney(calc.vk)}
-                    </td>
-                    <td className="py-4 px-4 text-right">
-                      <div className="flex justify-end gap-2">
-                        {onLoadSavedCalculation && (
-                          <button
-                            onClick={() => onLoadSavedCalculation(calc)}
-                            className="bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-black uppercase tracking-widest text-[9px] px-2.5 py-1.5 rounded-lg active:scale-95 transition-all"
-                          >
-                            Laden
-                          </button>
-                        )}
-                        {onDeleteSavedCalculation && (
-                          <button
-                            onClick={() => onDeleteSavedCalculation(calc.id, calc.name)}
-                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 p-1.5 rounded-lg active:scale-95 transition-all"
-                            title="Löschen"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
 
       {/* MOBILE BOTTOM SLIDING SHEET */}
       <div

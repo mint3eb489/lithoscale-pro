@@ -246,7 +246,7 @@ export default function App() {
         unsubSettings = subscribeToCloudSettings();
         unsubOffers = subscribeToOffers();
         unsubProfile = subscribeToUserProfile(user);
-        unsubSavedCalculations = subscribeToSavedCalculations();
+        unsubSavedCalculations = subscribeToSavedCalculations(user);
       } else {
         setCloudStatus('Anmeldung erforderlich');
         setCloudStatusColor('bg-amber-500');
@@ -410,10 +410,11 @@ export default function App() {
     );
   };
 
-  const subscribeToSavedCalculations = () => {
+  const subscribeToSavedCalculations = (user: any) => {
     const collRef = collection(db, 'artifacts', internalAppId, 'public', 'data', 'savedCalculations');
+    const q = query(collRef, where('userId', '==', user.uid));
     return onSnapshot(
-      collRef,
+      q,
       (snap) => {
         const list: SavedCalculation[] = [];
         snap.forEach((doc) => {
@@ -1264,6 +1265,7 @@ export default function App() {
       ek,
       vk,
       timestamp: Date.now(),
+      userId: currentUser?.uid || '',
     };
 
     const updatedList = [newCalc, ...savedCalculations];

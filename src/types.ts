@@ -156,6 +156,7 @@ export interface SavedCalculation {
   ek: number;
   vk: number;
   timestamp: number;
+  userId?: string;
 }
 
 export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {

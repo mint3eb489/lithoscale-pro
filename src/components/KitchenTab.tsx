@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Kitchen, AppConfig, KitchenItem, UserProfile, SavedCalculation } from '../types';
-import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark } from 'lucide-react';
+import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
 interface KitchenTabProps {
@@ -364,7 +364,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                   className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-all cursor-pointer"
                   title="Gespeicherte Kalkulationen anzeigen"
                 >
-                  <Download className="w-3.5 h-3.5" />
+                  <Cloud className="w-3.5 h-3.5" />
                 </button>
 
                 {showSavedCalcsDropdown && (
