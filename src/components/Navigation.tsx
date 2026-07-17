@@ -8,6 +8,8 @@ interface NavigationProps {
   toggleDark: () => void;
   onLogout: () => void;
   isAdmin: boolean;
+  cloudStatusColor: string;
+  cloudStatus: string;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
@@ -17,19 +19,25 @@ export const Navigation: React.FC<NavigationProps> = ({
   toggleDark,
   onLogout,
   isAdmin,
+  cloudStatusColor,
+  cloudStatus,
 }) => {
   return (
-    <header className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-center mb-10 mt-8 lg:mt-0" id="main-navigation">
+    <header className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-center mb-10 mt-2 lg:mt-0" id="main-navigation">
       {/* LEFT AREA: aligned with Configuration (lg:col-span-3) */}
       <div className="lg:col-span-3 flex flex-col sm:flex-row justify-between items-center gap-4 w-full">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 bg-black dark:bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl border border-white/10 shrink-0">
             <img src="/apple-touch-icon.png" className="w-full h-full object-cover" alt="LithoScale Pro Logo" referrerPolicy="no-referrer" />
           </div>
-          <div>
+          <div className="flex items-center gap-2.5">
             <h1 className="text-3xl font-black flex items-center tracking-tighter select-none text-slate-900 dark:text-white">
               LithoScale <span className="inline-flex items-center border-[1.2px] border-amber-400 text-amber-400 rounded px-1.5 py-0.5 text-[0.45em] font-black ml-2.5 translate-y-[-2px]">Pro</span>
             </h1>
+            <div 
+              className={`w-2.5 h-2.5 rounded-full ${cloudStatusColor} shrink-0 transition-colors duration-550`}
+              title={cloudStatus}
+            />
           </div>
         </div>
 

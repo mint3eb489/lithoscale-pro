@@ -54,6 +54,7 @@ export default function App() {
   const topCount = parts.reduce((sum, p) => sum + (p.top || 0), 0);
   const notchCount = parts.reduce((sum, p) => sum + (p.notch || 0), 0);
   const holeCount = parts.reduce((sum, p) => sum + (p.hole || 0), 0);
+  const careCount = parts.reduce((sum, p) => sum + (p.care || 0), 0);
 
   const [gluingCheck, setGluingCheck] = useState<boolean>(false);
   const [activeServices, setActiveServices] = useState<{ measure: boolean; delivery: boolean }>({
@@ -107,6 +108,7 @@ export default function App() {
     } catch {}
     return [];
   });
+  const [activeCalculation, setActiveCalculation] = useState<SavedCalculation | null>(null);
 
   const personalFactors = {
     factor: userProfile?.customFactors?.factor ?? config.factor,
@@ -131,9 +133,21 @@ export default function App() {
     title: string;
     message: string;
     onConfirm: () => void;
+    onCancel?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    type?: 'danger' | 'info';
   } | null>(null);
 
-  const requestConfirm = (title: string, message: string, onConfirm: () => void) => {
+  const requestConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void,
+    onCancel?: () => void,
+    confirmText?: string,
+    cancelText?: string,
+    type: 'danger' | 'info' = 'danger'
+  ) => {
     setConfirmDialog({
       isOpen: true,
       title,
@@ -141,7 +155,14 @@ export default function App() {
       onConfirm: () => {
         onConfirm();
         setConfirmDialog(null);
-      }
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmDialog(null);
+      } : undefined,
+      confirmText,
+      cancelText,
+      type
     });
   };
 
@@ -999,12 +1020,16 @@ export default function App() {
     const sumMat = totalSqm * s.price;
     const sumEdge = totalLfm * edgeRate;
 
+    const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
+    const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
+
     const sumCut =
       flushCount * rateFlush +
       underCount * rateUnder +
       topCount * rateTop +
-      notchCount * (config.notch || 0) +
-      holeCount * (config.hole || 0);
+      notchCount * rateNotch +
+      holeCount * (config.hole || 0) +
+      careCount * rateCare;
 
     const sumExtra =
       miterMeters * (config.miter || 0) +
@@ -1152,12 +1177,16 @@ export default function App() {
     const sumMat = totalSqm * s.price;
     const sumEdge = 0; // standard edges list calculated out
 
+    const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
+    const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
+
     const sumCut =
       flushCount * rateFlush +
       underCount * rateUnder +
       topCount * rateTop +
-      notchCount * (config.notch || 0) +
-      holeCount * (config.hole || 0);
+      notchCount * rateNotch +
+      holeCount * (config.hole || 0) +
+      careCount * rateCare;
 
     const sumExtra =
       miterMeters * (config.miter || 0) +
@@ -1200,7 +1229,7 @@ export default function App() {
     }
   };
 
-  const handleSaveCalculation = async (name: string) => {
+  const handleSaveCalculation = async (name: string, overwriteId?: string) => {
     if (!name || name.trim() === '') {
       showToast('Name der Kalkulation fehlt!');
       return;
@@ -1236,12 +1265,16 @@ export default function App() {
     const sumMat = totalSqm * s.price;
     const sumEdge = totalLfm * edgeRate;
 
+    const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
+    const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
+
     const sumCut =
       flushCount * rateFlush +
       underCount * rateUnder +
       topCount * rateTop +
-      notchCount * (config.notch || 0) +
-      holeCount * (config.hole || 0);
+      notchCount * rateNotch +
+      holeCount * (config.hole || 0) +
+      careCount * rateCare;
 
     const sumExtra =
       miterMeters * (config.miter || 0) +
@@ -1252,8 +1285,11 @@ export default function App() {
     const ek = sumMat + sumEdge + sumCut + sumExtra;
     const vk = ek * personalFactors.factor;
 
+    const isUpdate = !!overwriteId;
+    const targetId = overwriteId || 'calc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+
     const newCalc: SavedCalculation = {
-      id: 'calc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      id: targetId,
       name: name.trim(),
       stoneId: s.id,
       stoneName: s.name,
@@ -1268,7 +1304,12 @@ export default function App() {
       userId: currentUser?.uid || '',
     };
 
-    const updatedList = [newCalc, ...savedCalculations];
+    let updatedList: SavedCalculation[];
+    if (isUpdate) {
+      updatedList = savedCalculations.map((c) => (c.id === targetId ? newCalc : c));
+    } else {
+      updatedList = [newCalc, ...savedCalculations];
+    }
     setSavedCalculations(updatedList);
     localStorage.setItem('ls_saved_calculations', JSON.stringify(updatedList));
 
@@ -1276,16 +1317,18 @@ export default function App() {
       setCloudStatus('Speichere Kalkulation...');
       setCloudStatusColor('bg-blue-500 animate-pulse');
       try {
-        const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'savedCalculations', newCalc.id);
+        const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'savedCalculations', targetId);
         await setDoc(docRef, newCalc);
-        showToast(`Kalkulation "${newCalc.name}" gespeichert.`);
+        showToast(isUpdate ? `Kalkulation "${name}" aktualisiert.` : `Kalkulation "${name}" gespeichert.`);
         setCloudStatus('Cloud Aktiv');
         setCloudStatusColor('bg-green-500');
+        setActiveCalculation(newCalc);
       } catch (err) {
-        handleFirestoreError(err, OperationType.WRITE, `savedCalculations/${newCalc.id}`);
+        handleFirestoreError(err, OperationType.WRITE, `savedCalculations/${targetId}`);
       }
     } else {
-      showToast(`Kalkulation "${newCalc.name}" lokal gespeichert.`);
+      showToast(isUpdate ? `Kalkulation "${name}" lokal aktualisiert.` : `Kalkulation "${name}" lokal gespeichert.`);
+      setActiveCalculation(newCalc);
     }
   };
 
@@ -1294,6 +1337,10 @@ export default function App() {
       const updatedList = savedCalculations.filter((c) => c.id !== id);
       setSavedCalculations(updatedList);
       localStorage.setItem('ls_saved_calculations', JSON.stringify(updatedList));
+
+      if (activeCalculation?.id === id) {
+        setActiveCalculation(null);
+      }
 
       if (currentUser) {
         setCloudStatus('Lösche Kalkulation...');
@@ -1321,6 +1368,7 @@ export default function App() {
     if (calc.activeServices) {
       setActiveServices(calc.activeServices);
     }
+    setActiveCalculation(calc);
     showToast(`Kalkulation "${calc.name}" in Rechner geladen!`);
     setActiveTab('calc');
   };
@@ -1341,6 +1389,7 @@ export default function App() {
     if (calc.activeServices) {
       setActiveServices(calc.activeServices);
     }
+    setActiveCalculation(calc);
 
     showToast(`Kalkulation "${calc.name}" ins Angebot geladen!`);
   };
@@ -1629,15 +1678,7 @@ export default function App() {
   return (
     <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans">
       
-      {/* CLOUD CONNECTIVITY STATUS INDICATOR */}
-      <div id="cloud-status" className="fixed top-4 right-4 text-[9px] font-bold uppercase tracking-widest z-50 flex flex-col items-end gap-1">
-        <div className="flex items-center gap-2 bg-white/90 dark:bg-black/80 p-2 px-3 rounded-full shadow-lg border dark:border-darkBorder">
-          <span className="text-slate-500">{cloudStatus}</span>
-          <div className={`w-2 h-2 rounded-full ${cloudStatusColor}`} />
-        </div>
-      </div>
-
-      <div id="app" className="max-w-4xl mx-auto relative pt-4 lg:pt-0">
+      <div id="app" className="max-w-4xl mx-auto relative">
         
         {/* Navigation / Header */}
         <Navigation
@@ -1647,6 +1688,8 @@ export default function App() {
           toggleDark={() => setDark((prev) => !prev)}
           onLogout={handleLogout}
           isAdmin={userProfile?.role === 'admin' || userProfile?.role === 'sys-admin'}
+          cloudStatusColor={cloudStatusColor}
+          cloudStatus={cloudStatus}
         />
 
         {/* Dynamic Panels container */}
@@ -1666,6 +1709,7 @@ export default function App() {
               topCount={topCount}
               notchCount={notchCount}
               holeCount={holeCount}
+              careCount={careCount}
               gluingCheck={gluingCheck}
               setGluingCheck={setGluingCheck}
               activeServices={activeServices}
@@ -1678,6 +1722,7 @@ export default function App() {
                 setGluingCheck(false);
                 setActiveServices({ measure: true, delivery: true });
                 setParts([{ id: Date.now(), name: 'Platte 1', l: '', w: '', edges: { v: true, h: false, l: false, r: false } }]);
+                setActiveCalculation(null);
               }}
               openLightbox={(img) => {
                 setLightboxImg(img);
@@ -1685,7 +1730,37 @@ export default function App() {
               }}
               personalFactors={personalFactors}
               savedCalculations={savedCalculations}
-              onSaveCalculation={() => requestPrompt('Kalkulation speichern', 'Bitte gib einen Namen für diese Steinkalkulation ein.', '', 'Kommissionsname', (name) => handleSaveCalculation(name))}
+              onSaveCalculation={() => {
+                if (activeCalculation) {
+                  requestConfirm(
+                    'Kalkulation aktualisieren?',
+                    `Möchtest du die Änderungen in der bestehenden Kalkulation "${activeCalculation.name}" speichern?\n\n(Klicke "Aktualisieren" zum Überschreiben, oder "Als Kopie speichern" für eine neue Kalkulation)`,
+                    () => {
+                      handleSaveCalculation(activeCalculation.name, activeCalculation.id);
+                    },
+                    () => {
+                      requestPrompt(
+                        'Kalkulation speichern',
+                        'Bitte gib einen Namen für diese Steinkalkulation ein.',
+                        `${activeCalculation.name} - Kopie`,
+                        'Kommissionsname',
+                        (name) => handleSaveCalculation(name)
+                      );
+                    },
+                    'Aktualisieren',
+                    'Als Kopie speichern',
+                    'info'
+                  );
+                } else {
+                  requestPrompt(
+                    'Kalkulation speichern',
+                    'Bitte gib einen Namen für diese Steinkalkulation ein.',
+                    '',
+                    'Kommissionsname',
+                    (name) => handleSaveCalculation(name)
+                  );
+                }
+              }}
               onDeleteSavedCalculation={handleDeleteSavedCalculation}
               onLoadSavedCalculation={handleLoadCalculationIntoCalculator}
             />
@@ -2342,12 +2417,16 @@ export default function App() {
                   const sumMat = totalSqm * s.price;
                   const sumEdge = totalLfm * edgeRate;
 
+                  const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
+                  const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
+
                   const sumCut =
                     flushCount * rateFlush +
                     underCount * rateUnder +
                     topCount * rateTop +
-                    notchCount * (config.notch || 0) +
-                    holeCount * (config.hole || 0);
+                    notchCount * rateNotch +
+                    holeCount * (config.hole || 0) +
+                    careCount * rateCare;
 
                   const sumExtra =
                     miterMeters * (config.miter || 0) +
@@ -2457,31 +2536,56 @@ export default function App() {
         {/* 5. CUSTOM CONFIRM DIALOG */}
         {confirmDialog?.isOpen && (
           <div className="fixed inset-0 z-[600] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="card p-6 md:p-8 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-3xl">
+            <div className="card p-6 md:p-8 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-3xl relative">
+              {/* Close (X) button */}
+              <button
+                onClick={() => setConfirmDialog(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                title="Schließen"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
               <div className="text-center mb-6">
-                <div className="w-14 h-14 bg-red-500/10 dark:bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">⚠️</span>
-                </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                {confirmDialog.type === 'info' ? (
+                  <div className="w-14 h-14 bg-blue-500/10 dark:bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">💾</span>
+                  </div>
+                ) : (
+                  <div className="w-14 h-14 bg-red-500/10 dark:bg-red-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">⚠️</span>
+                  </div>
+                )}
+                <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight pr-6">
                   {confirmDialog.title}
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed whitespace-pre-line">
                   {confirmDialog.message}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
-                  onClick={() => setConfirmDialog(null)}
+                  onClick={() => {
+                    if (confirmDialog.onCancel) {
+                      confirmDialog.onCancel();
+                    } else {
+                      setConfirmDialog(null);
+                    }
+                  }}
                   className="py-3 rounded-xl font-bold text-xs uppercase tracking-widest bg-slate-100 hover:bg-slate-200 dark:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer text-center"
                 >
-                  Abbrechen
+                  {confirmDialog.cancelText || 'Abbrechen'}
                 </button>
                 <button
                   onClick={confirmDialog.onConfirm}
-                  className="py-3 rounded-xl font-bold text-xs uppercase tracking-widest bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-600/20 transition-all active:scale-95 cursor-pointer text-center"
+                  className={`py-3 rounded-xl font-bold text-xs uppercase tracking-widest text-white shadow-lg transition-all active:scale-95 cursor-pointer text-center ${
+                    confirmDialog.type === 'info'
+                      ? 'bg-blue-600 hover:bg-blue-500 dark:bg-blue-500 dark:hover:bg-blue-600 shadow-blue-500/20'
+                      : 'bg-red-600 hover:bg-red-500 shadow-red-600/20'
+                  }`}
                 >
-                  Bestätigen
+                  {confirmDialog.confirmText || 'Bestätigen'}
                 </button>
               </div>
             </div>
@@ -2491,12 +2595,21 @@ export default function App() {
         {/* 6. CUSTOM PROMPT DIALOG */}
         {promptDialog?.isOpen && (
           <div className="fixed inset-0 z-[600] bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="card p-6 md:p-8 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-3xl">
+            <div className="card p-6 md:p-8 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-3xl relative">
+              {/* Close (X) button */}
+              <button
+                onClick={() => setPromptDialog(null)}
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                title="Schließen"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
               <div className="text-center mb-5">
                 <div className="w-14 h-14 bg-blue-500/10 dark:bg-blue-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Folder className="w-6 h-6 text-blue-500" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight pr-6">
                   {promptDialog.title}
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">
@@ -2520,7 +2633,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={() => setPromptDialog(null)}
                   className="py-3 rounded-xl font-bold text-xs uppercase tracking-widest bg-slate-100 hover:bg-slate-200 dark:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer text-center"

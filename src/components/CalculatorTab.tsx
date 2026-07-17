@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Part, SavedCalculation } from '../types';
-import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, RotateCcw, ChevronDown, Search, Bookmark, Save, Trash2, Download, Cloud } from 'lucide-react';
+import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, RotateCcw, ChevronDown, Search, Bookmark, Save, Trash2, Download, Cloud, TrendingUp } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
 interface CalculatorTabProps {
@@ -17,6 +17,7 @@ interface CalculatorTabProps {
   topCount: number;
   notchCount: number;
   holeCount: number;
+  careCount: number;
   gluingCheck: boolean;
   setGluingCheck: (val: boolean) => void;
   activeServices: { measure: boolean; delivery: boolean };
@@ -48,6 +49,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   topCount,
   notchCount,
   holeCount,
+  careCount,
   gluingCheck,
   setGluingCheck,
   activeServices,
@@ -128,7 +130,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
     }
   }, [dropdownOpen]);
 
-  const updateGlobalMachiningCount = (key: 'flush' | 'under' | 'top' | 'notch' | 'hole', value: number) => {
+  const updateGlobalMachiningCount = (key: 'flush' | 'under' | 'top' | 'notch' | 'hole' | 'care', value: number) => {
     if (parts.length === 0) return;
     setParts((prev) =>
       prev.map((p, idx) => {
@@ -153,6 +155,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   const sortedStones = [...stones].sort((a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
   
   const selectedStone = stones.find((s) => s.id === selectedStoneId) || stones[0] || null;
+  const isDek = selectedStone ? (selectedStone.isDekton === true || selectedStone.isDekton === 'true') : false;
 
   // Real-time calculation helper
   const calculateResult = () => {
@@ -183,12 +186,16 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
     const sumMat = totalSqm * selectedStone.price;
     const sumEdge = totalLfm * edgeRate;
 
+    const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
+    const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
+
     const sumCut =
       flushCount * rateFlush +
       underCount * rateUnder +
       topCount * rateTop +
-      notchCount * (config.notch || 0) +
-      holeCount * (config.hole || 0);
+      notchCount * rateNotch +
+      holeCount * (config.hole || 0) +
+      careCount * rateCare;
 
     const sumExtra =
       miterMeters * (config.miter || 0) +
@@ -221,6 +228,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
         top: 0,
         notch: 0,
         hole: 0,
+        care: 0,
         miter: '',
         gluing: false,
       },
@@ -304,12 +312,51 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                 <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Konfiguration</h2>
                 
                 {/* Dezent Actions */}
-                <div className="flex items-center gap-1 ml-1">
+                <div className="flex items-center gap-1.5 ml-1">
+                  <button
+                    onClick={onSaveStat}
+                    type="button"
+                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/20 active:scale-90 transition-all cursor-pointer text-[8.5px] font-black uppercase tracking-wider shrink-0"
+                    title="In Markttrend übernehmen"
+                  >
+                    <TrendingUp className="w-3.5 h-3.5" />
+                    <span>Markttrend</span>
+                  </button>
+                </div>
+              </div>
+              
+              {selectedStone && (
+                <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-black text-white ${(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'bg-red-500' : 'bg-green-500'}`}>
+                  {(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'DEKTON' : 'NATURSTEIN'}
+                </span>
+              )}
+            </div>
+
+          <div className="flex flex-col sm:flex-row gap-5 mb-5">
+            <div
+              className="w-44 h-44 sm:w-36 sm:h-36 md:w-40 md:h-40 lg:w-40 lg:h-40 rounded-xl border border-slate-200 dark:border-darkBorder overflow-hidden shrink-0 bg-slate-50 dark:bg-black flex items-center justify-center relative shadow-inner mx-auto sm:mx-0 group cursor-pointer"
+              onClick={() => selectedStone?.image && openLightbox(selectedStone.image)}
+              title="Bild vergrößern"
+            >
+              {selectedStone?.image ? (
+                <img
+                  src={selectedStone.image.startsWith('http') || selectedStone.image.startsWith('data:') ? selectedStone.image : `images/${selectedStone.image}`}
+                  alt={selectedStone.name}
+                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                />
+              ) : (
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center leading-tight">Kein<br />Bild</span>
+              )}
+            </div>
+
+            <div className="flex-1 flex flex-col justify-center">
+              <div className="flex justify-between items-center mb-2 ml-1">
+                <div className="flex items-center gap-1.5">
                   {onSaveCalculation && (
                     <button
                       onClick={onSaveCalculation}
                       type="button"
-                      className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-all cursor-pointer"
+                      className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20 active:scale-90 transition-all cursor-pointer"
                       title="Kalkulation speichern"
                     >
                       <Save className="w-3.5 h-3.5" />
@@ -320,7 +367,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                       <button
                         onClick={() => setShowSavedCalcsDropdownInCalc(!showSavedCalcsDropdownInCalc)}
                         type="button"
-                        className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-500 dark:text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 active:scale-90 transition-all cursor-pointer"
+                        className="p-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/20 active:scale-90 transition-all cursor-pointer"
                         title="Gespeicherte Kalkulation laden"
                       >
                         <Cloud className="w-3.5 h-3.5" />
@@ -374,7 +421,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                                         onDeleteSavedCalculation(calc.id, calc.name);
                                       }}
                                       className="text-red-500 hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/20 p-1 rounded-lg active:scale-95 transition-all shrink-0 opacity-60 hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                                      title="Kalkulation löschen"
+                                      title="Kalkulation pflegen"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
@@ -386,41 +433,6 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
-              </div>
-              
-              {selectedStone && (
-                <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-black text-white ${(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'bg-red-500' : 'bg-green-500'}`}>
-                  {(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'DEKTON' : 'NATURSTEIN'}
-                </span>
-              )}
-            </div>
-
-          <div className="flex flex-col sm:flex-row gap-5 mb-5">
-            <div
-              className="w-44 h-44 sm:w-36 sm:h-36 md:w-40 md:h-40 lg:w-40 lg:h-40 rounded-xl border border-slate-200 dark:border-darkBorder overflow-hidden shrink-0 bg-slate-50 dark:bg-black flex items-center justify-center relative shadow-inner mx-auto sm:mx-0 group cursor-pointer"
-              onClick={() => selectedStone?.image && openLightbox(selectedStone.image)}
-              title="Bild vergrößern"
-            >
-              {selectedStone?.image ? (
-                <img
-                  src={selectedStone.image.startsWith('http') || selectedStone.image.startsWith('data:') ? selectedStone.image : `images/${selectedStone.image}`}
-                  alt={selectedStone.name}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                />
-              ) : (
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center leading-tight">Kein<br />Bild</span>
-              )}
-            </div>
-
-            <div className="flex-1 flex flex-col justify-center">
-              <div className="flex justify-between items-center mb-2 ml-1">
-                <div className="flex items-center">
-                  {selectedStone && (
-                    <span className="text-[10.5px] font-mono font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded-md">
-                      {formatMoney(selectedStone.price)}/m²
-                    </span>
                   )}
                 </div>
                 <div className="flex gap-1.5">
@@ -774,6 +786,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                               updateMachiningValue(p.id, 'top', 0);
                               updateMachiningValue(p.id, 'notch', 0);
                               updateMachiningValue(p.id, 'hole', 0);
+                              updateMachiningValue(p.id, 'care', 0);
                             }}
                             disabled={!hasAnyValue}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border shadow-2xs select-none ${
@@ -878,6 +891,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
               { key: 'top', label: 'Auflage', val: topCount },
               { key: 'notch', label: 'Ausklinkung', val: notchCount },
               { key: 'hole', label: 'Bohrung', val: holeCount },
+              { key: 'care', label: isDek ? 'Reinigungsmittel' : 'Pflegeset', val: careCount },
             ].map((mach) => {
               const val = mach.val;
               const isActive = val > 0;
@@ -1003,13 +1017,6 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           </div>
 
           <button
-            onClick={onSaveStat}
-            className="w-full py-3 flex items-center justify-center border border-slate-[#262626] text-slate-505 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 mb-3"
-          >
-            In Markttrend übernehmen
-          </button>
-
-          <button
             onClick={onResetCalculator}
             className="w-full py-3 flex items-center justify-center border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
           >
@@ -1088,6 +1095,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
               { key: 'top', label: 'Auflage', val: topCount },
               { key: 'notch', label: 'Ausklinkung', val: notchCount },
               { key: 'hole', label: 'Bohrung', val: holeCount },
+              { key: 'care', label: isDek ? 'Reinigungsmittel' : 'Pflegeset', val: careCount },
             ].map((mach) => {
               const val = mach.val;
               const isActive = val > 0;
@@ -1211,13 +1219,6 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </p>
             <p className="text-[8px] text-slate-500 mt-2 italic relative">*Kalkuliert mit aktuellem Faktor</p>
           </div>
-
-          <button
-            onClick={onSaveStat}
-            className="w-full py-4 flex items-center justify-center border border-slate-700 text-slate-400 hover:bg-white/5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 mb-3"
-          >
-            In Markttrend übernehmen
-          </button>
 
           <button
             onClick={onResetCalculator}

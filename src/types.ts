@@ -31,6 +31,10 @@ export interface AppConfig {
   dekCutFlush: number;
   dekCutTop: number;
   notch: number;
+  natNotch: number;
+  dekNotch: number;
+  natPflegeset: number;
+  dekReinigungsmittel: number;
   hole: number;
   miter: number;
   moebelFactor: number;
@@ -72,6 +76,7 @@ export interface Part {
   top?: number;     // Auflage
   notch?: number;   // Ausklinkungen
   hole?: number;    // Bohrungen
+  care?: number;    // Pflegeset/Reinigungsmittel
   miter?: string;   // Gehrung in cm
   gluing?: boolean; // Verkleben aktiv für diese Platte
 }
@@ -204,6 +209,10 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
     dekCutFlush: 177,
     dekCutTop: 85,
     notch: 45,
+    natNotch: 45,
+    dekNotch: 45,
+    natPflegeset: 45,
+    dekReinigungsmittel: 45,
     hole: 25,
     miter: 45,
     moebelFactor: 2.0,

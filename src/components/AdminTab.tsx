@@ -44,6 +44,10 @@ const configLabels: Record<string, string> = {
   dekCutFlush: "FB-Ausschnitt Dekton (€/Stk)",
   dekCutTop: "Auflage Dekton (€/Stk)",
   notch: "Ausklinkung (€/Stk)",
+  natNotch: "Ausklinkung Natur (€/Stk)",
+  dekNotch: "Ausklinkung Dekton (€/Stk)",
+  natPflegeset: "Pflegeset Natur (€/Stk)",
+  dekReinigungsmittel: "Reinigungsmittel Dekton (€/Stk)",
   hole: "Bohrung (€/Stk)",
   miter: "Gehrung (€/Lfm)",
   moebelFactor: "Möbel-Faktor (VK)"
@@ -535,6 +539,20 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
                       />
+                      <ConfigInput
+                        configKey="natNotch"
+                        value={config.natNotch}
+                        label="Ausklinkung"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
+                      <ConfigInput
+                        configKey="natPflegeset"
+                        value={config.natPflegeset}
+                        label="Pflegeset"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
                     </div>
                   </div>
 
@@ -575,6 +593,20 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
                       />
+                      <ConfigInput
+                        configKey="dekNotch"
+                        value={config.dekNotch}
+                        label="Ausklinkung"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
+                      <ConfigInput
+                        configKey="dekReinigungsmittel"
+                        value={config.dekReinigungsmittel}
+                        label="Reinigungsmittel"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
                     </div>
                   </div>
                 </div>
@@ -586,14 +618,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                   <Cpu className="w-3.5 h-3.5 text-emerald-500" />
                   <span>Zusatz-Arbeiten & Details</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                  <ConfigInput
-                    configKey="notch"
-                    value={config.notch}
-                    label="Ausklinkung"
-                    suffix="€/Stk"
-                    onUpdate={onUpdateConfig}
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <ConfigInput
                     configKey="hole"
                     value={config.hole}
