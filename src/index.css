@@ -149,10 +149,19 @@
   filter: blur(40px);
   opacity: 0;
   transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, filter;
 }
 
-.card:not(.gallery-card):hover::after {
-  opacity: 1;
+@media (hover: hover) {
+  .card:not(.gallery-card):hover::after {
+    opacity: 1;
+  }
+}
+
+@media (hover: none) {
+  .card:not(.gallery-card):not(.no-glow)::after {
+    opacity: 0.65;
+  }
 }
 
 .font-mono-tabular {

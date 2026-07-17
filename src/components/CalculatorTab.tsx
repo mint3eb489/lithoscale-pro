@@ -304,7 +304,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
         <div className="card p-6 relative overflow-hidden group/card hover:border-blue-500/30 transition-all duration-300">
           
           {/* Der Glow-Hintergrundkreis */}
-          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/15 dark:bg-blue-400/15 blur-3xl z-0" />
+          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-60 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/15 dark:bg-blue-400/15 blur-3xl z-0" />
 
           <div className="relative z-10">
             <div className="flex justify-between items-center mb-5 border-b border-slate-200 dark:border-darkBorder pb-3 relative">
@@ -856,7 +856,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
         <div className="p-6 md:p-8 bg-black text-white rounded-3xl shadow-2xl border border-darkBorder transition-all duration-300 relative overflow-hidden group/card">
           
           {/* Der Glow-Hintergrundkreis */}
-          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/25 blur-3xl z-0" />
+          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-60 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/25 blur-3xl z-0" />
 
           <div className="relative z-10">
             <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-6 border-b border-darkBorder pb-4 text-center">

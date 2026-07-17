@@ -263,7 +263,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
               <span>Cloud-Management & Backup-Zentrale</span>
               <div className="relative group inline-block">
                 <Info className="w-4 h-4 text-slate-400 hover:text-blue-500 cursor-pointer transition-colors" />
-                <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-72 md:w-80 p-4 bg-slate-950 dark:bg-zinc-900 text-white rounded-xl shadow-2xl opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-all duration-200 z-50 border border-slate-800 dark:border-zinc-800 text-left font-normal normal-case tracking-normal">
+                <div className="absolute right-0 sm:left-1/2 sm:-translate-x-1/2 top-full mt-2 w-64 sm:w-80 p-4 bg-slate-950 dark:bg-zinc-900 text-white rounded-xl shadow-2xl hidden group-hover:block pointer-events-none group-hover:pointer-events-auto z-50 border border-slate-800 dark:border-zinc-800 text-left font-normal normal-case tracking-normal">
                   <div className="font-bold text-blue-400 text-xs mb-2 flex items-center gap-1.5">
                     <Info className="w-3.5 h-3.5 text-blue-400" />
                     Wie funktioniert das Backup?
@@ -282,7 +282,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       Nach dem Laden eines Material-Backups müssen Sie oben rechts auf <span className="text-blue-400 font-bold">UPLOAD CLOUD</span> klicken, um die Änderungen live in der Cloud für alle Berater zu aktivieren!
                     </div>
                   </div>
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-950 dark:border-b-zinc-900"></div>
+                  <div className="absolute bottom-full right-2 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 border-4 border-transparent border-b-slate-950 dark:border-b-zinc-900"></div>
                 </div>
               </div>
             </h2>

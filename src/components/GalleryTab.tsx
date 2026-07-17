@@ -84,7 +84,7 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
                 e.stopPropagation();
                 openLightbox(s.image);
               }}
-              className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-black/70 shadow-lg"
+              className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity backdrop-blur-sm hover:bg-black/70 shadow-lg"
             >
               <Maximize2 className="w-4 h-4" />
             </button>

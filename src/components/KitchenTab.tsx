@@ -252,7 +252,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
         <div className="card p-4 relative overflow-hidden group/card hover:border-blue-500/35 hover:shadow-xl transition-all duration-300">
           
           {/* Der Glow-Hintergrundkreis */}
-          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/15 dark:bg-blue-400/15 blur-3xl z-0" />
+          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-60 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/15 dark:bg-blue-400/15 blur-3xl z-0" />
 
           <div className="relative z-10">
             <div className="flex justify-between items-center mb-3.5 border-b border-slate-200 dark:border-darkBorder pb-2">
@@ -749,7 +749,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
         <div className="p-4 md:p-5 bg-black text-white rounded-2xl shadow-2xl border border-slate-900 transition-all duration-300 relative overflow-hidden group/card">
           
           {/* Der Glow-Hintergrundkreis */}
-          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/25 blur-3xl z-0" />
+          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-60 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/25 blur-3xl z-0" />
 
           <div className="relative z-10">
             <h2 className="text-[10px] font-black uppercase tracking-widest text-[#94a3b8] mb-4 border-b border-slate-900 pb-3 text-center">
