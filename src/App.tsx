@@ -1676,9 +1676,9 @@ export default function App() {
   const existingFolders = Array.from(new Set(visibleOffers.map(o => o.folder).filter(Boolean))) as string[];
 
   return (
-    <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans">
+    <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans w-full max-w-full overflow-x-hidden">
       
-      <div id="app" className="max-w-4xl mx-auto relative">
+      <div id="app" className="max-w-4xl mx-auto relative w-full">
         
         {/* Navigation / Header */}
         <Navigation

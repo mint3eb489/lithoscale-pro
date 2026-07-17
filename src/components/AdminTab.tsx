@@ -254,11 +254,11 @@ export const AdminTab: React.FC<AdminTabProps> = ({
   ) as Array<keyof AppConfig>;
 
   return (
-    <div id="tab-admin" className="space-y-6 pb-20">
-      <div className="card no-glow !overflow-visible p-6 bg-slate-50 dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-2xl space-y-4">
+    <div id="tab-admin" className="space-y-6 pb-20 w-full max-w-full overflow-x-hidden sm:overflow-x-visible">
+      <div className="card no-glow !overflow-visible p-4 sm:p-6 bg-slate-50 dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-2xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-darkBorder pb-4 gap-4">
           <div>
-            <h2 className="text-lg font-black text-blue-600 flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-black text-blue-600 flex flex-wrap items-center gap-2">
               <Cloud className="w-5 h-5 text-blue-500" />
               <span>Cloud-Management & Backup-Zentrale</span>
               <div className="relative group inline-block">
