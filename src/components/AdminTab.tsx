@@ -20,6 +20,7 @@ interface AdminTabProps {
   onAddPreRegisteredUser?: (name: string, email: string, role: 'sys-admin' | 'admin' | 'berater') => void;
   onDeleteUserProfile?: (uid: string) => void;
   onUpdateUserFactors?: (uid: string, factor: number | null, moebelFactor: number | null) => void;
+  onUpdateUserPermission?: (uid: string, permissionKey: string, value: boolean) => void;
   currentUserUid?: string;
   currentUserRole?: 'sys-admin' | 'admin' | 'berater';
   isAdminUnlocked?: boolean;
@@ -196,6 +197,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
   onAddPreRegisteredUser,
   onDeleteUserProfile,
   onUpdateUserFactors,
+  onUpdateUserPermission,
   currentUserUid,
   currentUserRole,
   isAdminUnlocked,
@@ -254,8 +256,8 @@ export const AdminTab: React.FC<AdminTabProps> = ({
   ) as Array<keyof AppConfig>;
 
   return (
-    <div id="tab-admin" className="space-y-6 pb-20 w-full max-w-full overflow-x-hidden sm:overflow-x-visible">
-      <div className="card no-glow !overflow-visible p-4 sm:p-6 bg-slate-50 dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-2xl space-y-4">
+    <div id="tab-admin" className="space-y-6 pb-20 w-full max-w-full">
+      <div className="p-4 sm:p-6 bg-slate-50 dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-2xl space-y-4 relative">
         <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200 dark:border-darkBorder pb-4 gap-4">
           <div>
             <h2 className="text-base sm:text-lg font-black text-blue-600 flex flex-wrap items-center gap-2">
@@ -263,7 +265,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
               <span>Cloud-Management & Backup-Zentrale</span>
               <div className="relative group inline-block">
                 <Info className="w-4 h-4 text-slate-400 hover:text-blue-500 cursor-pointer transition-colors" />
-                <div className="absolute right-0 sm:left-1/2 sm:-translate-x-1/2 top-full mt-2 w-64 sm:w-80 p-4 bg-slate-950 dark:bg-zinc-900 text-white rounded-xl shadow-2xl hidden group-hover:block pointer-events-none group-hover:pointer-events-auto z-50 border border-slate-800 dark:border-zinc-800 text-left font-normal normal-case tracking-normal">
+                <div className="absolute left-0 top-full mt-2 w-72 sm:w-96 p-4 bg-slate-950 dark:bg-zinc-900 text-white rounded-xl shadow-2xl hidden group-hover:block pointer-events-none group-hover:pointer-events-auto z-50 border border-slate-800 dark:border-zinc-800 text-left font-normal normal-case tracking-normal">
                   <div className="font-bold text-blue-400 text-xs mb-2 flex items-center gap-1.5">
                     <Info className="w-3.5 h-3.5 text-blue-400" />
                     Wie funktioniert das Backup?
@@ -282,7 +284,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       Nach dem Laden eines Material-Backups müssen Sie oben rechts auf <span className="text-blue-400 font-bold">UPLOAD CLOUD</span> klicken, um die Änderungen live in der Cloud für alle Berater zu aktivieren!
                     </div>
                   </div>
-                  <div className="absolute bottom-full right-2 sm:right-auto sm:left-1/2 sm:-translate-x-1/2 border-4 border-transparent border-b-slate-950 dark:border-b-zinc-900"></div>
+                  <div className="absolute bottom-full left-1.5 border-4 border-transparent border-b-slate-950 dark:border-b-zinc-900"></div>
                 </div>
               </div>
             </h2>
@@ -1517,6 +1519,40 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                               (Standard: {config.moebelFactor || 2.0})
                             </span>
                           </div>
+                        </div>
+                      </div>
+
+                      {/* Beta Features & Permissions Row */}
+                      <div className="pt-2.5 border-t border-slate-200 dark:border-zinc-800/60 flex flex-col sm:flex-row gap-2 items-start sm:items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                          <Sparkles className="w-3 h-3 text-amber-500" />
+                          <span>Beta-Funktionen & Freigaben</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={cannotEdit}
+                            onClick={() => {
+                              const isCurrentlyEnabled = u.canUsePriceComparison !== undefined
+                                ? u.canUsePriceComparison
+                                : (u.role === 'admin' || u.role === 'sys-admin');
+                              onUpdateUserPermission && onUpdateUserPermission(u.id, 'canUsePriceComparison', !isCurrentlyEnabled);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                              (u.canUsePriceComparison !== undefined ? u.canUsePriceComparison : (u.role === 'admin' || u.role === 'sys-admin'))
+                                ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/25 shadow-xs'
+                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-zinc-700 hover:text-slate-600 dark:hover:text-slate-300'
+                            }`}
+                            title="Schaltet das Reinziehen von Alternativ-Angeboten und den Preis-Vergleich für diesen Benutzer frei"
+                          >
+                            <Layers className="w-3 h-3" />
+                            <span>Preis-Vergleich (Beta):</span>
+                            <span className="font-black uppercase tracking-wider">
+                              {(u.canUsePriceComparison !== undefined ? u.canUsePriceComparison : (u.role === 'admin' || u.role === 'sys-admin'))
+                                ? 'Aktiviert ✓'
+                                : 'Deaktiviert'}
+                            </span>
+                          </button>
                         </div>
                       </div>
 

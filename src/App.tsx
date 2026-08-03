@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db, internalAppId, handleFirestoreError, OperationType } from './firebase';
-import { Stone, AppConfig, Part, Kitchen, Offer, DEFAULTS, UserProfile, SavedCalculation } from './types';
+import { Stone, AppConfig, Part, Kitchen, KitchenVersionOption, Offer, DEFAULTS, UserProfile, SavedCalculation } from './types';
 import { DEFAULT_STONES } from './data/defaultStones';
 import { Navigation } from './components/Navigation';
 import { CalculatorTab } from './components/CalculatorTab';
@@ -500,6 +500,17 @@ export default function App() {
       await setDoc(docRef, { phone }, { merge: true });
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleUpdateUserPermission = async (uid: string, permissionKey: string, value: boolean) => {
+    try {
+      const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'users', uid);
+      await setDoc(docRef, { [permissionKey]: value }, { merge: true });
+      showToast('Benutzerberechtigung aktualisiert.');
+    } catch (err) {
+      console.error(err);
+      showToast('Fehler beim Aktualisieren der Berechtigung.');
     }
   };
 
@@ -1394,17 +1405,17 @@ export default function App() {
     showToast(`Kalkulation "${calc.name}" ins Angebot geladen!`);
   };
 
-  // Carat Importer Logic from spreadsheet rows parser
-  const processCaratRows = (rows: any[][]) => {
+  // Carat Importer Logic & Multi-Version Parser
+  const parseCaratRows = (rows: any[][], fileName: string) => {
     let sumMoebelEK = 0;
     let newMiele: any[] = [];
     let newSpuele: any[] = [];
     let newWasser: any[] = [];
     let newGeraete: any[] = [];
 
-    let apName = kitchen.apName;
-    let apPriceVK = kitchen.steinVK;
-    let apPriceEK = kitchen.steinEK;
+    let apName = '';
+    let apPriceVK = '';
+    let apPriceEK = '';
 
     let foundBlancoChoice = false;
 
@@ -1463,8 +1474,7 @@ export default function App() {
     }
 
     if (startRow === -1) {
-      showToast("Katalog o. Spalten 'Bezeichnung', 'EK' nicht gefunden.");
-      return;
+      return null;
     }
 
     let countItems = 0;
@@ -1512,49 +1522,247 @@ export default function App() {
       }
     }
 
-    if (countItems === 0) {
-      showToast('Gültige Spalten, aber leere Artikel.');
-      return;
-    }
+    if (countItems === 0) return null;
 
     if (foundBlancoChoice) {
       newWasser.push({ id: Date.now() + Math.random(), name: 'Blanco Choice All', val: '3000' });
     }
 
+    let mieleVK = 0;
+    newMiele.forEach((m) => { mieleVK += parseNum(m.val); });
+    let wasserVK = 0;
+    newWasser.forEach((w) => { wasserVK += parseNum(w.val); });
+
+    const moebelFactor = personalFactors?.moebelFactor ?? config.moebelFactor ?? 2.0;
+    const vkMoebel = sumMoebelEK * moebelFactor;
+    const vkStein = parseNum(apPriceVK);
+    const totalCalculatedVK = vkMoebel + wasserVK + vkStein + mieleVK;
+
+    const parsedKitchenData: Kitchen = {
+      offerId: kitchen.offerId,
+      kunde: kitchen.kunde,
+      beraterId: kitchen.beraterId,
+      front1: kitchen.front1,
+      front2: kitchen.front2,
+      griff: kitchen.griff,
+      apName: apName,
+      hauspreis: '',
+      ekMoebel: sumMoebelEK > 0 ? sumMoebelEK.toFixed(2).replace('.', ',') : '',
+      rabattMoebel: '',
+      rabattMiele: '',
+      geraete: newGeraete.length > 0 ? newGeraete : [{ id: Date.now(), name: '', val: '' }],
+      miele: newMiele.length > 0 ? newMiele : [{ id: Date.now() + 1, name: '', val: '' }],
+      spuele: newSpuele.length > 0 ? newSpuele : [{ id: Date.now() + 3, name: '', val: '' }],
+      wasser: newWasser.length > 0 ? newWasser : [{ id: Date.now() + 2, name: '', val: '' }],
+      mehrpreise: [{ id: Date.now() + 4, name: '', val: '' }],
+      steinVK: apPriceVK,
+      steinEK: apPriceEK,
+      zubehoer: '',
+      showMoebelEK: kitchen.showMoebelEK ?? true,
+      optKuechenText: kitchen.optKuechenText ?? true,
+      optBallerina: kitchen.optBallerina ?? true,
+      optAnschluss: kitchen.optAnschluss ?? true,
+      optAnschlussRabatt: kitchen.optAnschlussRabatt ?? false,
+      optNachtext: kitchen.optNachtext ?? true,
+    };
+
+    return {
+      parsedKitchenData,
+      fileName,
+      ekMoebel: sumMoebelEK > 0 ? sumMoebelEK.toFixed(2).replace('.', ',') : '',
+      steinVK: apPriceVK,
+      steinEK: apPriceEK,
+      mieleVK,
+      wasserVK,
+      totalCalculatedVK,
+      countItems,
+    };
+  };
+
+  const readAndParseExcelFile = (file: File): Promise<any> => {
+    return new Promise((resolve, reject) => {
+      const XLSX = (window as any).XLSX;
+      if (!XLSX) {
+        reject(new Error('Excel Modul lädt noch, bitte kurz warten.'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { header: 1 });
+          const parsed = parseCaratRows(rows as any[][], file.name);
+          resolve(parsed);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      reader.onerror = (err) => reject(err);
+      reader.readAsArrayBuffer(file);
+    });
+  };
+
+  const handleImportCaratFiles = async (files: File[], targetSlotIndex?: number) => {
+    if (!files || files.length === 0) return;
+
+    try {
+      if (files.length > 1) {
+        const parsedResults = await Promise.all(
+          Array.from(files).slice(0, 3).map((f) => readAndParseExcelFile(f))
+        );
+
+        let newKitchen = { ...kitchen };
+        let newVersionOptions: KitchenVersionOption[] = [];
+
+        parsedResults.forEach((res, idx) => {
+          if (!res) return;
+          if (idx === 0) {
+            newKitchen = {
+              ...newKitchen,
+              ...res.parsedKitchenData,
+            };
+          } else {
+            const slotIdx = idx;
+            const optId = 'opt_ver_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const newOption: KitchenVersionOption = {
+              id: optId,
+              slotIndex: slotIdx,
+              fileName: res.fileName,
+              apName: res.parsedKitchenData.apName || '',
+              ekMoebel: res.ekMoebel,
+              steinVK: res.steinVK,
+              steinEK: res.steinEK,
+              hauspreis: res.parsedKitchenData.hauspreis || '',
+              mieleVK: res.mieleVK,
+              wasserVK: res.wasserVK,
+              totalCalculatedVK: res.totalCalculatedVK,
+              finalDisplayVK: res.parsedKitchenData.hauspreis ? parseFloat(res.parsedKitchenData.hauspreis.replace(',', '.')) : res.totalCalculatedVK,
+              timestamp: Date.now(),
+              kitchenData: res.parsedKitchenData,
+            };
+            newVersionOptions = newVersionOptions.filter(o => o.slotIndex !== slotIdx);
+            newVersionOptions.push(newOption);
+          }
+        });
+
+        setKitchen({
+          ...newKitchen,
+          versionOptions: newVersionOptions,
+        });
+
+        showToast(`${parsedResults.filter(Boolean).length} Excel-Dateien eingelesen und verglichen!`);
+      } else {
+        const file = files[0];
+        const res = await readAndParseExcelFile(file);
+        if (!res) {
+          showToast('Katalog o. Spalten "Bezeichnung", "EK" in der Datei nicht gefunden.');
+          return;
+        }
+
+        const slotIdx = targetSlotIndex !== undefined ? targetSlotIndex : 0;
+        if (slotIdx === 0) {
+          setKitchen((prev) => ({
+            ...prev,
+            ...res.parsedKitchenData,
+            versionOptions: [],
+          }));
+          showToast(`"${file.name}" als Basis-Angebot eingelesen!`);
+        } else {
+          const optId = 'opt_ver_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+          const newOption: KitchenVersionOption = {
+            id: optId,
+            slotIndex: slotIdx,
+            fileName: res.fileName,
+            apName: res.parsedKitchenData.apName || '',
+            ekMoebel: res.ekMoebel,
+            steinVK: res.steinVK,
+            steinEK: res.steinEK,
+            hauspreis: res.parsedKitchenData.hauspreis || '',
+            mieleVK: res.mieleVK,
+            wasserVK: res.wasserVK,
+            totalCalculatedVK: res.totalCalculatedVK,
+            finalDisplayVK: res.parsedKitchenData.hauspreis ? parseFloat(res.parsedKitchenData.hauspreis.replace(',', '.')) : res.totalCalculatedVK,
+            timestamp: Date.now(),
+            kitchenData: res.parsedKitchenData,
+          };
+
+          setKitchen((prev) => {
+            const existingOpts = (prev.versionOptions || []).filter(o => o.slotIndex !== slotIdx);
+            return {
+              ...prev,
+              versionOptions: [...existingOpts, newOption],
+            };
+          });
+
+          showToast(`"${file.name}" als Alternative ${slotIdx === 1 ? '1' : '2'} eingelesen!`);
+        }
+      }
+    } catch (err: any) {
+      console.error('Error importing Excel file:', err);
+      showToast('Fehler beim Excel-Import: ' + (err.message || 'Ungültige Datei'));
+    }
+  };
+
+  const handleSwapVersionWithBasis = (optionId: string) => {
+    const opt = (kitchen.versionOptions || []).find((o) => o.id === optionId);
+    if (!opt) return;
+
+    const parseVal = (str: string) => parseFloat(String(str).replace(',', '.')) || 0;
+    const currentEkMoebel = kitchen.ekMoebel;
+    const currentSteinVK = kitchen.steinVK;
+    const currentSteinEK = kitchen.steinEK;
+    const currentHauspreis = kitchen.hauspreis;
+    let mieleVK = 0;
+    (kitchen.miele || []).forEach(m => mieleVK += parseVal(m.val));
+    let wasserVK = 0;
+    (kitchen.wasser || []).forEach(w => wasserVK += parseVal(w.val));
+
+    const ekMoebelNum = parseVal(currentEkMoebel);
+    const moebelFactor = personalFactors?.moebelFactor ?? config.moebelFactor ?? 2.0;
+    const vkMoebelNum = ekMoebelNum * moebelFactor;
+    const vkSteinNum = parseVal(currentSteinVK);
+    const totalCalculatedVK = vkMoebelNum + wasserVK + vkSteinNum + mieleVK;
+
+    const oldBasisAsOption: KitchenVersionOption = {
+      id: 'opt_ver_' + Date.now(),
+      slotIndex: opt.slotIndex,
+      fileName: 'Bisherige Basis',
+      apName: kitchen.apName || '',
+      ekMoebel: currentEkMoebel,
+      steinVK: currentSteinVK,
+      steinEK: currentSteinEK,
+      hauspreis: currentHauspreis,
+      mieleVK: mieleVK,
+      wasserVK: wasserVK,
+      totalCalculatedVK: totalCalculatedVK,
+      finalDisplayVK: parseVal(currentHauspreis) > 0 ? parseVal(currentHauspreis) : totalCalculatedVK,
+      timestamp: Date.now(),
+      kitchenData: { ...kitchen, versionOptions: undefined },
+    };
+
+    const newBasisKitchen: Kitchen = {
+      ...opt.kitchenData,
+      versionOptions: (kitchen.versionOptions || [])
+        .filter(o => o.id !== optionId)
+        .concat([oldBasisAsOption]),
+    };
+
+    setKitchen(newBasisKitchen);
+    showToast(`"${opt.fileName}" wurde als Basis-Angebot übernommen!`);
+  };
+
+  const handleRemoveVersionOption = (optionId: string) => {
     setKitchen((prev) => ({
       ...prev,
-      ekMoebel: sumMoebelEK > 0 ? sumMoebelEK.toFixed(2).replace('.', ',') : prev.ekMoebel,
-      miele: newMiele.length > 0 ? newMiele : prev.miele,
-      spuele: newSpuele.length > 0 ? newSpuele : prev.spuele,
-      wasser: newWasser.length > 0 ? newWasser : prev.wasser,
-      geraete: newGeraete.length > 0 ? newGeraete : prev.geraete,
-      apName: apName,
-      steinVK: apPriceVK || prev.steinVK,
-      steinEK: apPriceEK || prev.steinEK,
+      versionOptions: (prev.versionOptions || []).filter((o) => o.id !== optionId),
     }));
-
-    showToast(`${countItems} Artikel aus CARAT-Plan eingelesen!`);
+    showToast('Variante entfernt.');
   };
 
   const handleImportCaratXLSX = (file: File) => {
-    const XLSX = (window as any).XLSX;
-    if (!XLSX) {
-      showToast('Excel Modul lädt noch, bitte 1 Sekunde warten.');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (e: any) => {
-      try {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const rows = XLSX.utils.sheet_to_json(workbook.Sheets[firstSheetName], { header: 1 });
-        processCaratRows(rows as any[][]);
-      } catch (err) {
-        showToast('Fehler beim Excel-Import.');
-      }
-    };
-    reader.readAsArrayBuffer(file);
+    handleImportCaratFiles([file], 0);
   };
 
   // Dual Comparisons View
@@ -1797,7 +2005,7 @@ export default function App() {
                   setKitchen({
                     offerId: null,
                     kunde: '',
-                    beraterId: '',
+                    beraterId: userProfile?.id || '',
                     front1: '',
                     front2: '',
                     griff: '',
@@ -1820,6 +2028,7 @@ export default function App() {
                     optAnschluss: true,
                     optAnschlussRabatt: false,
                     optNachtext: true,
+                    versionOptions: [],
                   });
                 });
               }}
@@ -1827,11 +2036,20 @@ export default function App() {
               onGeneratePDF={triggerPDFGeneration}
               onGeneratePDFPreview={triggerPDFPreview}
               onImportCaratXLSX={handleImportCaratXLSX}
+              onImportCaratFiles={handleImportCaratFiles}
+              onSwapVersionWithBasis={handleSwapVersionWithBasis}
+              onRemoveVersionOption={handleRemoveVersionOption}
               personalFactors={personalFactors}
               usersList={usersList}
+              userProfile={userProfile}
               savedCalculations={savedCalculations}
               onLoadSavedCalculation={handleLoadCalculationIntoKitchen}
               onDeleteSavedCalculation={handleDeleteSavedCalculation}
+              canUsePriceComparison={
+                userProfile?.canUsePriceComparison !== undefined
+                  ? userProfile.canUsePriceComparison
+                  : (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin')
+              }
             />
           )}
 
@@ -1857,6 +2075,7 @@ export default function App() {
               usersList={usersList}
               onUpdateUserRole={handleUpdateUserRole}
               onUpdateUserFactors={handleUpdateUserFactors}
+              onUpdateUserPermission={handleUpdateUserPermission}
               onUpdateUserName={handleUpdateUserName}
               onUpdateUserEmail={handleUpdateUserEmail}
               onUpdateUserPhone={handleUpdateUserPhone}

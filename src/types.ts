@@ -87,6 +87,23 @@ export interface KitchenItem {
   val: string;
 }
 
+export interface KitchenVersionOption {
+  id: string;
+  slotIndex: number; // 0 = Basis, 1 = Option A, 2 = Option B
+  fileName: string;
+  apName: string;
+  ekMoebel: string;
+  steinVK: string;
+  steinEK: string;
+  hauspreis: string;
+  mieleVK: number;
+  wasserVK: number;
+  totalCalculatedVK: number;
+  finalDisplayVK: number;
+  timestamp: number;
+  kitchenData: Kitchen;
+}
+
 export interface Kitchen {
   offerId: string | null;
   kunde: string;
@@ -113,6 +130,7 @@ export interface Kitchen {
   optAnschluss: boolean;
   optAnschlussRabatt: boolean;
   optNachtext: boolean;
+  versionOptions?: KitchenVersionOption[];
 }
 
 export interface Offer {
@@ -146,6 +164,7 @@ export interface UserProfile {
     factor?: number; // VK-Faktor für Steine
     moebelFactor?: number; // Möbelfaktor
   };
+  canUsePriceComparison?: boolean;
 }
 
 export interface SavedCalculation {
