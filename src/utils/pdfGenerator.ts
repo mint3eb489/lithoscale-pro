@@ -1,4 +1,5 @@
 import { Kitchen, AppConfig, Part, UserProfile } from '../types';
+import { findBeraterUser } from './beraterUtils';
 
 interface PDFParams {
   kitchen: Kitchen;
@@ -152,8 +153,7 @@ export async function generateKitchenPDF(
       });
     }
 
-    const beraterObj = (params.usersList || []).find((u) => String(u.id) === String(k.beraterId)) ||
-                       (config.beraterList || []).find((b) => String(b.id) === String(k.beraterId));
+    const beraterObj = findBeraterUser(k.beraterId, params.usersList || []);
     let beraterBlock: any = { text: '', margin: [0, 0, 0, 0] };
     if (beraterObj && beraterObj.name) {
       let line2Parts: string[] = [];

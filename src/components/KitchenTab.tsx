@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { Kitchen, AppConfig, KitchenItem, UserProfile, SavedCalculation, KitchenVersionOption } from '../types';
 import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
+import { resolveBeraterId, resolveBeraterName } from '../utils/beraterUtils';
 
 interface KitchenTabProps {
   kitchen: Kitchen;
@@ -547,39 +548,78 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
             </div>
             <div>
               <label className="text-[9px] font-black text-slate-650 dark:text-slate-300 uppercase block mb-1">Berater</label>
-              <select
-                value={currentKitchen.beraterId || userProfile?.id || ''}
-                onChange={(e) => updateField('beraterId', e.target.value)}
-                className="input-field input-field-compact text-xs text-slate-800 dark:text-white cursor-pointer hover:border-slate-300 dark:hover:border-slate-700"
-              >
-                <option value="" className="text-slate-650 dark:text-slate-400 font-bold">-- Bitte wählen --</option>
-                {(() => {
-                  const combinedUsers = [...(usersList || [])];
-                  if (userProfile && !combinedUsers.some((u) => u.id === userProfile.id)) {
-                    combinedUsers.push(userProfile);
+              {(() => {
+                // 1. Build list from Benutzerverwaltung (usersList) + userProfile
+                const rawList: { id: string; name: string }[] = [];
+
+                (usersList || []).forEach((u) => {
+                  if (u.id && u.name) {
+                    rawList.push({ id: String(u.id), name: u.name });
                   }
-                  if (combinedUsers.length > 0) {
-                    return combinedUsers
-                      .sort((a, b) => {
-                        const aIsEnrico = a.name?.toLowerCase().includes("enrico belmonte");
-                        const bIsEnrico = b.name?.toLowerCase().includes("enrico belmonte");
-                        if (aIsEnrico && !bIsEnrico) return -1;
-                        if (!aIsEnrico && bIsEnrico) return 1;
-                        return (a.name || '').localeCompare(b.name || '');
-                      })
-                      .map((u) => (
-                        <option key={u.id} value={u.id} className="text-slate-900 dark:text-white">
-                          {u.name}
-                        </option>
-                      ));
+                });
+
+                if (userProfile?.id && userProfile?.name) {
+                  if (!rawList.some((u) => u.id === String(userProfile.id))) {
+                    rawList.push({ id: String(userProfile.id), name: userProfile.name });
                   }
-                  return (config.beraterList || []).map((b) => (
-                    <option key={b.id} value={b.id} className="text-slate-900 dark:text-white">
-                      {b.name}
-                    </option>
-                  ));
-                })()}
-              </select>
+                }
+
+                // 2. Deduplicate strictly by name (case-insensitive)
+                const uniqueByNameMap = new Map<string, { id: string; name: string }>();
+                rawList.forEach((item) => {
+                  const nameKey = item.name.trim().toLowerCase();
+                  if (!uniqueByNameMap.has(nameKey)) {
+                    uniqueByNameMap.set(nameKey, item);
+                  }
+                });
+
+                const uniqueList = Array.from(uniqueByNameMap.values());
+
+                // 3. Sort: Enrico Belmonte first, then alphabetically
+                uniqueList.sort((a, b) => {
+                  const aIsEnrico = a.name.toLowerCase().includes("enrico belmonte");
+                  const bIsEnrico = b.name.toLowerCase().includes("enrico belmonte");
+                  if (aIsEnrico && !bIsEnrico) return -1;
+                  if (!aIsEnrico && bIsEnrico) return 1;
+                  return a.name.localeCompare(b.name, 'de', { sensitivity: 'base' });
+                });
+
+                // 4. Resolve effective selected ID (handles legacy names like "Belmonte", "Ruoff", "T. Schulz", "b1", "1775813497113", etc.)
+                const isAdmin = userProfile?.role === 'admin' || userProfile?.role === 'sys-admin';
+                const rawBeraterVal = currentKitchen.beraterId || userProfile?.id || '';
+                const selectedValue = resolveBeraterId(rawBeraterVal, usersList, userProfile, config.beraterList);
+
+                const existsInList = uniqueList.some((b) => b.id === selectedValue);
+                let extraFallbackOption: { id: string; name: string } | null = null;
+                if (!existsInList && rawBeraterVal) {
+                  const fallbackName = resolveBeraterName(rawBeraterVal, usersList, userProfile, config.beraterList);
+                  extraFallbackOption = { id: selectedValue, name: fallbackName };
+                }
+
+                return (
+                  <select
+                    value={selectedValue}
+                    disabled={!isAdmin}
+                    onChange={(e) => updateField('beraterId', e.target.value)}
+                    className={`input-field input-field-compact text-xs text-slate-800 dark:text-white font-medium ${
+                      !isAdmin
+                        ? 'bg-slate-100 dark:bg-slate-800 cursor-not-allowed opacity-90'
+                        : 'cursor-pointer hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {uniqueList.map((b) => (
+                      <option key={b.id} value={b.id} className="text-slate-900 dark:text-white">
+                        {b.name}
+                      </option>
+                    ))}
+                    {extraFallbackOption && (
+                      <option key={extraFallbackOption.id} value={extraFallbackOption.id} className="text-slate-900 dark:text-white">
+                        {extraFallbackOption.name}
+                      </option>
+                    )}
+                  </select>
+                );
+              })()}
             </div>
           </div>
 

@@ -10,6 +10,7 @@ import { GalleryTab } from './components/GalleryTab';
 import { KitchenTab } from './components/KitchenTab';
 import { AdminTab } from './components/AdminTab';
 import { generateKitchenPDF } from './utils/pdfGenerator';
+import { resolveBeraterId, resolveBeraterName, findBeraterUser } from './utils/beraterUtils';
 import { Cloud, Check, ShieldAlert, KeyRound, Search, X, Folder, FolderOpen, Plus, Trash2, Pencil, ChevronDown, ChevronUp, History, Download, Eye } from 'lucide-react';
 
 const generateId = () => 'st_' + Math.random().toString(36).substr(2, 9);
@@ -289,9 +290,9 @@ export default function App() {
     };
   }, []);
 
-  // Subscribe to all users if current user is an admin or sys-admin
+  // Subscribe to all users in Benutzerverwaltung
   useEffect(() => {
-    if (currentUser && (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin')) {
+    if (currentUser) {
       const collRef = collection(db, 'artifacts', internalAppId, 'public', 'data', 'users');
       const unsub = onSnapshot(collRef, (snap) => {
         const list: UserProfile[] = [];
@@ -304,7 +305,7 @@ export default function App() {
       });
       return unsub;
     }
-  }, [currentUser, userProfile]);
+  }, [currentUser]);
 
   const subscribeToCloudSettings = () => {
     const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'settings', 'active');
@@ -989,7 +990,11 @@ export default function App() {
     const o = visibleOffers.find((x) => x.id === id);
     if (!o) return;
     requestConfirm('Angebot laden?', `Möchtest du das Angebot für "${o.kunde}" laden? Aktuelle Daten auf dieser Seite werden überschrieben.`, () => {
-      setKitchen(o.kitchen);
+      const loadedBeraterId = resolveBeraterId(o.kitchen?.beraterId || o.beraterId, usersList, userProfile, config.beraterList);
+      setKitchen({
+        ...o.kitchen,
+        beraterId: loadedBeraterId,
+      });
       setParts(o.parts || []);
       if (o.stoneId) setSelectedStoneId(o.stoneId);
       setOffersModalOpen(false);
@@ -1833,7 +1838,10 @@ export default function App() {
       if (ofFolder !== activeFolderFilter) return false;
     }
     // Adviser filter
-    if (offerBeraterFilter !== 'all' && String(o.beraterId) !== String(offerBeraterFilter)) return false;
+    if (offerBeraterFilter !== 'all') {
+      const resId = resolveBeraterId(o.kitchen?.beraterId || o.beraterId, usersList, userProfile, config.beraterList);
+      if (resId !== offerBeraterFilter) return false;
+    }
     // Search filter
     if (offerSearch && !o.kunde.toLowerCase().includes(offerSearch.toLowerCase())) return false;
     return true;
@@ -1872,11 +1880,9 @@ export default function App() {
   // 4. Sort families
   const sortedFamilies = familiesList.sort((a, b) => {
     if (offerSort === 'berater') {
-      const nameA = (usersList || []).find((u) => String(u.id) === String(a.latestOffer.beraterId))?.name ||
-                    config.beraterList?.find((ber) => String(ber.id) === String(a.latestOffer.beraterId))?.name || '';
-      const nameB = (usersList || []).find((u) => String(u.id) === String(b.latestOffer.beraterId))?.name ||
-                    config.beraterList?.find((ber) => String(ber.id) === String(b.latestOffer.beraterId))?.name || '';
-      return nameA.localeCompare(nameB);
+      const nameA = resolveBeraterName(a.latestOffer.kitchen?.beraterId || a.latestOffer.beraterId, usersList, userProfile, config.beraterList);
+      const nameB = resolveBeraterName(b.latestOffer.kitchen?.beraterId || b.latestOffer.beraterId, usersList, userProfile, config.beraterList);
+      return nameA.localeCompare(nameB, 'de', { sensitivity: 'base' });
     }
     return (b.latestOffer.timestamp || 0) - (a.latestOffer.timestamp || 0);
   });
@@ -2260,27 +2266,33 @@ export default function App() {
                         className="bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-xl px-3 py-2 text-sm outline-none text-slate-8 w-36 cursor-pointer text-slate-800 dark:text-white"
                       >
                         <option value="all">Alle Berater</option>
-                        {(usersList && usersList.length > 0) ? (
-                          [...usersList]
+                        {(() => {
+                          const rawList: { id: string; name: string }[] = [];
+                          (usersList || []).forEach((u) => {
+                            if (u.id && u.name) rawList.push({ id: String(u.id), name: u.name });
+                          });
+                          if (userProfile?.id && userProfile?.name && !rawList.some((u) => u.id === String(userProfile.id))) {
+                            rawList.push({ id: String(userProfile.id), name: userProfile.name });
+                          }
+                          const map = new Map<string, { id: string; name: string }>();
+                          rawList.forEach((u) => {
+                            const k = u.name.trim().toLowerCase();
+                            if (!map.has(k)) map.set(k, u);
+                          });
+                          return Array.from(map.values())
                             .sort((a, b) => {
-                              const aIsEnrico = a.name?.toLowerCase().includes("enrico belmonte");
-                              const bIsEnrico = b.name?.toLowerCase().includes("enrico belmonte");
+                              const aIsEnrico = a.name.toLowerCase().includes("enrico belmonte");
+                              const bIsEnrico = b.name.toLowerCase().includes("enrico belmonte");
                               if (aIsEnrico && !bIsEnrico) return -1;
                               if (!aIsEnrico && bIsEnrico) return 1;
-                              return 0;
+                              return a.name.localeCompare(b.name, 'de', { sensitivity: 'base' });
                             })
                             .map((u) => (
                               <option key={u.id} value={u.id}>
                                 {u.name}
                               </option>
-                            ))
-                        ) : (
-                          (config.beraterList || []).map((b) => (
-                            <option key={b.id} value={b.id}>
-                              {b.name}
-                            </option>
-                          ))
-                        )}
+                            ));
+                        })()}
                       </select>
                       <select
                         value={offerSort}
@@ -2304,8 +2316,7 @@ export default function App() {
                     ) : (
                       sortedFamilies.map((fam) => {
                         const lat = fam.latestOffer;
-                        const foundBerater = (usersList || []).find((u) => String(u.id) === String(lat.beraterId)) ||
-                                             (config.beraterList || []).find((b) => String(b.id) === String(lat.beraterId));
+                        const beraterName = resolveBeraterName(lat.kitchen?.beraterId || lat.beraterId, usersList, userProfile, config.beraterList);
                         const isExpanded = !!expandedFamilies[fam.familyId];
                         const olderVersions = fam.versions.slice(1);
 
@@ -2357,7 +2368,7 @@ export default function App() {
                                 <div className="flex items-center gap-3 text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none mt-1">
                                   <span>{new Date(lat.timestamp).toLocaleDateString()}</span>
                                   <span>•</span>
-                                  <span className="text-blue-500">{foundBerater?.name || 'Ohne Berater'}</span>
+                                  <span className="text-blue-500">{beraterName || 'Ohne Berater'}</span>
                                   <span>•</span>
                                   <span className="text-emerald-500 font-black">
                                     {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(lat.totalVK)}
@@ -2399,8 +2410,7 @@ export default function App() {
                             {isExpanded && olderVersions.length > 0 && (
                               <div className="border-t border-slate-150 dark:border-zinc-900 bg-slate-50/50 dark:bg-black/25 px-4 py-3 divide-y divide-slate-100 dark:divide-zinc-900/40">
                                 {olderVersions.map((ver) => {
-                                  const verBerater = (usersList || []).find((u) => String(u.id) === String(ver.beraterId)) ||
-                                                     (config.beraterList || []).find((b) => String(b.id) === String(ver.beraterId));
+                                  const verBeraterName = resolveBeraterName(ver.kitchen?.beraterId || ver.beraterId, usersList, userProfile, config.beraterList);
                                   return (
                                     <div
                                       key={ver.id}
@@ -2421,7 +2431,7 @@ export default function App() {
                                         <div className="flex items-center gap-2.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
                                           <span>{new Date(ver.timestamp).toLocaleDateString()} {new Date(ver.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                           <span>•</span>
-                                          <span>{verBerater?.name || 'Ohne Berater'}</span>
+                                          <span>{verBeraterName || 'Ohne Berater'}</span>
                                           <span>•</span>
                                           <span className="text-emerald-500 font-black">
                                             {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(ver.totalVK)}
