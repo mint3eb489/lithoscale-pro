@@ -2367,6 +2367,18 @@ export default function App() {
 
                               {/* Primary Card Actions */}
                               <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
+                                {/* EXPAND OLDER VERSIONS BUTTON */}
+                                {olderVersions.length > 0 && (
+                                  <button
+                                    onClick={() => setExpandedFamilies(prev => ({ ...prev, [fam.familyId]: !prev[fam.familyId] }))}
+                                    className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-xl text-[10px] font-extrabold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-zinc-850 uppercase tracking-widest cursor-pointer transition-all"
+                                  >
+                                    <History className="w-3.5 h-3.5" />
+                                    <span>Verlauf ({olderVersions.length})</span>
+                                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  </button>
+                                )}
+
                                 <button
                                   onClick={() => loadOffer(lat.id)}
                                   className="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
@@ -2380,18 +2392,6 @@ export default function App() {
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
-                                
-                                {/* EXPAND OLDER VERSIONS BUTTON */}
-                                {olderVersions.length > 0 && (
-                                  <button
-                                    onClick={() => setExpandedFamilies(prev => ({ ...prev, [fam.familyId]: !prev[fam.familyId] }))}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-xl text-[10px] font-extrabold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-zinc-850 uppercase tracking-widest cursor-pointer transition-all"
-                                  >
-                                    <History className="w-3.5 h-3.5" />
-                                    <span>Verlauf ({olderVersions.length})</span>
-                                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                  </button>
-                                )}
                               </div>
                             </div>
 
