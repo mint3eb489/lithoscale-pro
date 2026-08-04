@@ -716,26 +716,29 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                 </button>
 
                 {showSavedCalcsDropdown && (
-                  <div className="absolute right-0 top-full mt-1.5 w-64 bg-white dark:bg-[#161616] border border-slate-200 dark:border-darkBorder rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
-                    <div className="px-3 py-1.5 text-[8.5px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-darkBorder mb-1 flex justify-between items-center">
-                      <span>Kalkulation auswählen</span>
+                  <div className="absolute right-0 bottom-full mb-1.5 w-72 bg-white dark:bg-[#161616] border border-slate-200 dark:border-darkBorder rounded-2xl shadow-2xl z-[100] py-2 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                    <div className="px-3.5 py-2 text-[9px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-darkBorder/80 mb-1 flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
+                      <span className="flex items-center gap-1.5 text-blue-500 font-bold">
+                        <Cloud className="w-3.5 h-3.5" />
+                        Kalkulation auswählen
+                      </span>
                       <button
                         type="button"
                         onClick={() => setShowSavedCalcsDropdown(false)}
-                        className="text-slate-400 hover:text-slate-655 dark:hover:text-slate-200 p-0.5 rounded transition-colors cursor-pointer"
+                        className="text-slate-400 hover:text-slate-655 dark:hover:text-slate-200 p-1 rounded-lg hover:bg-slate-200/50 dark:hover:bg-white/10 transition-colors cursor-pointer"
                         title="Schließen"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <div className="max-h-48 overflow-y-auto">
+                    <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 dark:divide-white/[0.04]">
                       {savedCalculations.length === 0 ? (
-                        <div className="px-3 py-3 text-xs text-slate-450 dark:text-slate-500 text-center italic">
+                        <div className="px-4 py-4 text-xs text-slate-450 dark:text-slate-500 text-center italic">
                           Keine gespeicherten Kalkulationen vorhanden
                         </div>
                       ) : (
                         savedCalculations.map((calc) => (
-                          <div key={calc.id} className="w-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex items-center justify-between px-3 py-2 group">
+                          <div key={calc.id} className="w-full hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-colors flex items-center justify-between px-3.5 py-2.5 group">
                             <button
                               type="button"
                               onClick={() => {
@@ -744,16 +747,16 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                                 }
                                 setShowSavedCalcsDropdown(false);
                               }}
-                              className="flex-1 text-left flex flex-col gap-0.5 min-w-0 mr-2"
+                              className="flex-1 text-left flex flex-col gap-0.5 min-w-0 mr-2 cursor-pointer"
                             >
-                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                              <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
                                 {calc.name}
                               </div>
-                              <div className="flex justify-between items-center text-[9px] text-slate-450 dark:text-slate-500 font-mono w-full">
-                                <span className="truncate max-w-[120px]">
+                              <div className="flex justify-between items-center text-[9.5px] text-slate-450 dark:text-slate-400 font-mono w-full">
+                                <span className="truncate max-w-[130px]">
                                   {calc.stoneName}
                                 </span>
-                                <span className="text-blue-500 font-bold shrink-0">
+                                <span className="text-blue-600 dark:text-blue-400 font-extrabold shrink-0">
                                   {formatMoney(calc.vk)}
                                 </span>
                               </div>
@@ -764,7 +767,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                                 onClick={() => {
                                   onDeleteSavedCalculation(calc.id, calc.name);
                                 }}
-                                className="text-red-500 hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/20 p-1 rounded-lg active:scale-95 transition-all shrink-0 opacity-60 hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                                className="text-red-500 hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/30 p-1.5 rounded-lg active:scale-95 transition-all shrink-0 opacity-70 hover:opacity-100 cursor-pointer"
                                 title="Kalkulation löschen"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />

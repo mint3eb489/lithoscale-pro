@@ -995,8 +995,7 @@ export default function App() {
         ...o.kitchen,
         beraterId: loadedBeraterId,
       });
-      setParts(o.parts || []);
-      if (o.stoneId) setSelectedStoneId(o.stoneId);
+      // Steinrechner bleibt beim Laden eines Angebots unberührt
       setOffersModalOpen(false);
       setActiveTab('kitchen');
       showToast('Angebot geladen.');
