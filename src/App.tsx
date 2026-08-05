@@ -2889,18 +2889,8 @@ export default function App() {
                     <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping" />
                     Dokumenten-Vorschau
                   </h2>
-                  <p className="text-[10px] text-slate-505 uppercase tracking-widest font-bold mt-1">
-                    Echtzeit-Prüfung: 1:1 identisch zum finalen Druck
-                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={triggerPDFGeneration}
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-extrabold uppercase tracking-wide cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
-                  >
-                    <Download className="w-4 h-4" />
-                    PDF Herunterladen
-                  </button>
                   <button
                     onClick={() => {
                       URL.revokeObjectURL(pdfPreviewUrl);
