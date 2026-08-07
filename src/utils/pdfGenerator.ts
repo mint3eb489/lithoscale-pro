@@ -95,7 +95,7 @@ export async function generateKitchenPDF(
     (k.geraete || []).forEach((g) => {
       if (g.name && g.name.trim() !== '') {
         const price = parseFloat(g.val.replace(',', '.')) || 0;
-        allDevices.push(price > 0 ? `${g.name} (Internetpreis: ${formatMoney(price)})` : g.name);
+        allDevices.push(price > 0 ? `${g.name} (${formatMoney(price)})` : g.name);
       }
     });
     (k.miele || []).forEach((m) => {
@@ -108,7 +108,7 @@ export async function generateKitchenPDF(
     (k.spuele || []).forEach((s) => {
       if (s.name && s.name.trim() !== '') {
         const price = parseFloat(s.val.replace(',', '.')) || 0;
-        zubehoerItems.push(price > 0 ? `${s.name} (Internetpreis: ${formatMoney(price)})` : s.name);
+        zubehoerItems.push(price > 0 ? `${s.name} (${formatMoney(price)})` : s.name);
       }
     });
     (k.wasser || []).forEach((w) => {
