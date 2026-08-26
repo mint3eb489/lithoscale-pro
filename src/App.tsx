@@ -214,7 +214,7 @@ export default function App() {
   const [saveOfferModalOpen, setSaveOfferModalOpen] = useState<boolean>(false);
   const [saveFolder, setSaveFolder] = useState<string>('');
   const [newFolderName, setNewFolderName] = useState<string>('');
-  const [saveVersionChoice, setSaveVersionChoice] = useState<'overwrite' | 'new_version'>('new_version');
+  const [saveVersionChoice, setSaveVersionChoice] = useState<'overwrite' | 'new_version'>('overwrite');
   const [saveVersionComment, setSaveVersionComment] = useState<string>('');
   const [activeFolderFilter, setActiveFolderFilter] = useState<string>('all');
   const [customFolders, setCustomFolders] = useState<string[]>([]);
@@ -714,11 +714,11 @@ export default function App() {
     const existingOffer = kitchen.offerId ? visibleOffers.find(x => x.id === kitchen.offerId) : null;
     if (existingOffer) {
       setSaveFolder(existingOffer.folder || '');
-      setSaveVersionChoice('new_version');
+      setSaveVersionChoice('overwrite');
       setSaveVersionComment('');
     } else {
       setSaveFolder('');
-      setSaveVersionChoice('new_version');
+      setSaveVersionChoice('overwrite');
       setSaveVersionComment('');
     }
     setSaveOfferModalOpen(true);
@@ -2536,21 +2536,21 @@ export default function App() {
                         <input
                           type="radio"
                           name="versionChoice"
-                          checked={saveVersionChoice === 'new_version'}
-                          onChange={() => setSaveVersionChoice('new_version')}
-                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <span>Neue Version (V{(offersList.filter(o => (o.parentOfferId || o.id) === (offersList.find(x => x.id === kitchen.offerId)?.parentOfferId || kitchen.offerId)).reduce((max, o) => Math.max(max, o.version || 1), 1) + 1)}) speichern</span>
-                      </label>
-                      <label className="flex items-center gap-3 cursor-pointer text-xs font-bold uppercase tracking-wide select-none text-slate-700 dark:text-slate-350">
-                        <input
-                          type="radio"
-                          name="versionChoice"
                           checked={saveVersionChoice === 'overwrite'}
                           onChange={() => setSaveVersionChoice('overwrite')}
                           className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
                         />
                         <span>Bestehende Version (V{offersList.find(x => x.id === kitchen.offerId)?.version || 1}) überschreiben</span>
+                      </label>
+                      <label className="flex items-center gap-3 cursor-pointer text-xs font-bold uppercase tracking-wide select-none text-slate-700 dark:text-slate-350">
+                        <input
+                          type="radio"
+                          name="versionChoice"
+                          checked={saveVersionChoice === 'new_version'}
+                          onChange={() => setSaveVersionChoice('new_version')}
+                          className="w-4 h-4 text-blue-600 border-slate-300 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span>Neue Version (V{(offersList.filter(o => (o.parentOfferId || o.id) === (offersList.find(x => x.id === kitchen.offerId)?.parentOfferId || kitchen.offerId)).reduce((max, o) => Math.max(max, o.version || 1), 1) + 1)}) speichern</span>
                       </label>
                     </div>
                   </div>

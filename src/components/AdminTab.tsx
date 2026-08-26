@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Berater, UserProfile } from '../types';
-import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown } from 'lucide-react';
+import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown, Percent } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 interface AdminTabProps {
@@ -51,7 +51,9 @@ const configLabels: Record<string, string> = {
   dekReinigungsmittel: "Reinigungsmittel Dekton (€/Stk)",
   hole: "Bohrung (€/Stk)",
   miter: "Gehrung (€/Lfm)",
-  moebelFactor: "Möbel-Faktor (VK)"
+  moebelFactor: "Möbel-Faktor (VK)",
+  maxRabattMoebel: "Max. Möbel-Rabatt (%)",
+  maxRabattMiele: "Max. Miele-Rabatt (%)"
 };
 
 interface UserFactorInputProps {
@@ -460,7 +462,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                   <Sparkles className="w-3.5 h-3.5 text-blue-500" />
                   <span>Basis & Service-Gebühren</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                   <ConfigInput
                     configKey="factor"
                     value={config.factor}
@@ -475,6 +477,22 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                     label="Möbel-Faktor (VK)"
                     suffix="Faktor"
                     icon={<Layers className="w-3.5 h-3.5" />}
+                    onUpdate={onUpdateConfig}
+                  />
+                  <ConfigInput
+                    configKey="maxRabattMoebel"
+                    value={config.maxRabattMoebel ?? 5}
+                    label="Max. Möbel-Rabatt"
+                    suffix="%"
+                    icon={<Percent className="w-3.5 h-3.5" />}
+                    onUpdate={onUpdateConfig}
+                  />
+                  <ConfigInput
+                    configKey="maxRabattMiele"
+                    value={config.maxRabattMiele ?? 3}
+                    label="Max. Miele-Rabatt"
+                    suffix="%"
+                    icon={<Percent className="w-3.5 h-3.5" />}
                     onUpdate={onUpdateConfig}
                   />
                   <ConfigInput

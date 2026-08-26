@@ -178,16 +178,19 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   };
 
   const updateField = (field: keyof Kitchen, val: any) => {
+    const maxMoebel = typeof config?.maxRabattMoebel === 'number' ? config.maxRabattMoebel : 5;
+    const maxMiele = typeof config?.maxRabattMiele === 'number' ? config.maxRabattMiele : 3;
+
     if (field === 'rabattMoebel') {
       let num = parseFloat(String(val).replace(',', '.')) || 0;
-      if (num > 5) {
-        val = '5';
+      if (num > maxMoebel) {
+        val = String(maxMoebel);
       }
     }
     if (field === 'rabattMiele') {
       let num = parseFloat(String(val).replace(',', '.')) || 0;
-      if (num > 3) {
-        val = '3';
+      if (num > maxMiele) {
+        val = String(maxMiele);
       }
     }
 
@@ -834,7 +837,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
               >
                 {currentKitchen.showMoebelEK ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               </button>
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder shadow-sm">
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder shadow-sm" title={`Maximal ${config?.maxRabattMoebel ?? 5}%`}>
                 <span className="text-[8px] font-black text-slate-700 dark:text-slate-300 uppercase">Möbel-Rabatt:</span>
                 <div className="relative w-10 shrink-0">
                   <input
@@ -884,7 +887,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                 <label className="text-[9px] font-black text-slate-655 dark:text-slate-300 uppercase">{block.label}</label>
                 <div className="flex items-center gap-2">
                   {block.mieleRabatt && (
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder">
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder" title={`Maximal ${config?.maxRabattMiele ?? 3}%`}>
                       <span className="text-[8px] font-black text-slate-700 dark:text-slate-300 uppercase">Miele-Rabatt:</span>
                       <div className="relative w-10 shrink-0">
                         <input
