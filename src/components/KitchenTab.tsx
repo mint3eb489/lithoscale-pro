@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Kitchen, AppConfig, KitchenItem, UserProfile, SavedCalculation, KitchenVersionOption } from '../types';
-import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy } from 'lucide-react';
+import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy, Tag, Zap } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 import { resolveBeraterId, resolveBeraterName } from '../utils/beraterUtils';
 
@@ -59,7 +59,18 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   const [showSavedCalcsDropdown, setShowSavedCalcsDropdown] = useState(false);
   const [isDiffBoxOpen, setIsDiffBoxOpen] = useState(false);
   const [activeVersionTab, setActiveVersionTab] = useState<number>(0); // 0 = Hauptauftrag (Basis), 1 = Option 1, 2 = Option 2
+  const [ignoredDiscounts, setIgnoredDiscounts] = useState<{ [slotIndex: number]: boolean }>({
+    1: false,
+    2: false,
+  });
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const toggleIgnoreDiscount = (slotIndex: number) => {
+    setIgnoredDiscounts((prev) => ({
+      ...prev,
+      [slotIndex]: !prev[slotIndex],
+    }));
+  };
 
   // Auto-set logged in user as Berater if not already set
   useEffect(() => {
@@ -114,16 +125,18 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     ? { ...opt2.kitchenData, kunde: opt2.kitchenData.kunde || kitchen.kunde, beraterId: opt2.kitchenData.beraterId || kitchen.beraterId }
     : kitchen;
 
+  const currentIsIgnored = activeVersionTab !== 0 && !!ignoredDiscounts[activeVersionTab];
+  const effectiveRabattMoebelNum = currentIsIgnored ? 0 : parseVal(kitchen.rabattMoebel);
+  const effectiveRabattMieleNum = currentIsIgnored ? 0 : parseVal(kitchen.rabattMiele);
+
   const ekMoebel = parseVal(currentKitchen.ekMoebel);
-  const rabattMoebel = parseVal(currentKitchen.rabattMoebel);
-  const vkMoebel = ekMoebel * moebelFactor * (1 - rabattMoebel / 100);
+  const vkMoebel = ekMoebel * moebelFactor * (1 - effectiveRabattMoebelNum / 100);
 
   const vkStein = parseVal(currentKitchen.steinVK);
 
   let sumMieleBrutto = 0;
   (currentKitchen.miele || []).forEach((m) => (sumMieleBrutto += parseVal(m.val)));
-  const rabattMiele = parseVal(currentKitchen.rabattMiele);
-  const vkMiele = sumMieleBrutto * (1 - rabattMiele / 100);
+  const vkMiele = sumMieleBrutto * (1 - effectiveRabattMieleNum / 100);
 
   let vkWasser = 0;
   (currentKitchen.wasser || []).forEach((w) => (vkWasser += parseVal(w.val)));
@@ -133,6 +146,50 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   const finalDisplayVK = targetEndprice > 0 ? targetEndprice : totalCalculatedVK;
   const proportionMontage = finalDisplayVK * 0.095;
 
+  // Helper to calculate pricing for an option slot
+  const getOptionCalculations = (opt: KitchenVersionOption) => {
+    const optK = opt.kitchenData || {
+      ...kitchen,
+      ekMoebel: opt.ekMoebel,
+      steinVK: opt.steinVK,
+      steinEK: opt.steinEK,
+      hauspreis: opt.hauspreis,
+    };
+    const isIgnored = !!ignoredDiscounts[opt.slotIndex];
+    const basisRabattMoebelNum = parseVal(kitchen.rabattMoebel);
+    const basisRabattMieleNum = parseVal(kitchen.rabattMiele);
+
+    const optRabattMoebelNum = isIgnored ? 0 : basisRabattMoebelNum;
+    const optRabattMieleNum = isIgnored ? 0 : basisRabattMieleNum;
+
+    const optEkMoebelNum = parseVal(optK.ekMoebel);
+    const optVkMoebelNum = optEkMoebelNum * moebelFactor * (1 - optRabattMoebelNum / 100);
+
+    let optSumMieleBrutto = 0;
+    (optK.miele || []).forEach((m) => (optSumMieleBrutto += parseVal(m.val)));
+    const optVkMieleNum = optSumMieleBrutto * (1 - optRabattMieleNum / 100);
+
+    let optVkWasserNum = 0;
+    (optK.wasser || []).forEach((w) => (optVkWasserNum += parseVal(w.val)));
+
+    const optVkMoebelUndGeraeteNum = optVkMoebelNum + optVkMieleNum + optVkWasserNum;
+    const optVkSteinNum = parseVal(optK.steinVK);
+    const optCalculatedVK = optVkMoebelUndGeraeteNum + optVkSteinNum;
+    const optHauspreisNum = parseVal(optK.hauspreis);
+    const optEndpreisNum = optHauspreisNum > 0 ? optHauspreisNum : optCalculatedVK;
+
+    return {
+      optK,
+      isIgnored,
+      optRabattMoebelNum,
+      optRabattMieleNum,
+      optVkMoebelUndGeraeteNum,
+      optVkSteinNum,
+      optCalculatedVK,
+      optEndpreisNum,
+    };
+  };
+
   // Helper to update an option's KitchenData inside kitchen.versionOptions
   const updateOptionData = (slotIdx: number, updaterFn: (prevK: Kitchen) => Kitchen) => {
     setKitchen((prev) => {
@@ -141,14 +198,16 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
           const baseK = opt.kitchenData || { ...prev };
           const newK = updaterFn(baseK);
 
+          const isIgnored = !!ignoredDiscounts[slotIdx];
+          const effRabattMoebel = isIgnored ? 0 : parseVal(prev.rabattMoebel);
+          const effRabattMiele = isIgnored ? 0 : parseVal(prev.rabattMiele);
+
           const ekMoebelNum = parseVal(newK.ekMoebel);
-          const rabattMoebelNum = parseVal(newK.rabattMoebel);
-          const vkMoebelNum = ekMoebelNum * moebelFactor * (1 - rabattMoebelNum / 100);
+          const vkMoebelNum = ekMoebelNum * moebelFactor * (1 - effRabattMoebel / 100);
 
           let optSumMiele = 0;
           (newK.miele || []).forEach((m) => (optSumMiele += parseVal(m.val)));
-          const rabattMieleNum = parseVal(newK.rabattMiele);
-          const vkMieleNum = optSumMiele * (1 - rabattMieleNum / 100);
+          const vkMieleNum = optSumMiele * (1 - effRabattMiele / 100);
 
           let optVkWasser = 0;
           (newK.wasser || []).forEach((w) => (optVkWasser += parseVal(w.val)));
@@ -192,6 +251,12 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
       if (num > maxMiele) {
         val = String(maxMiele);
       }
+    }
+
+    // Rabatte immer auf dem Hauptauftrag / global synchron halten
+    if (field === 'rabattMoebel' || field === 'rabattMiele') {
+      setKitchen((prev) => ({ ...prev, [field]: val }));
+      return;
     }
 
     if (activeVersionTab === 0) {
@@ -340,13 +405,14 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   };
 
   const renderDiffCard = (opt: KitchenVersionOption, label: string) => {
-    const optK = opt.kitchenData || {
-      ...kitchen,
-      ekMoebel: opt.ekMoebel,
-      steinVK: opt.steinVK,
-      steinEK: opt.steinEK,
-      hauspreis: opt.hauspreis,
-    };
+    const {
+      isIgnored,
+      optRabattMoebelNum,
+      optRabattMieleNum,
+      optVkMoebelUndGeraeteNum,
+      optVkSteinNum,
+      optEndpreisNum,
+    } = getOptionCalculations(opt);
 
     // Basis calculations
     const basisEkMoebelNum = parseVal(kitchen.ekMoebel);
@@ -365,30 +431,13 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     const basisHauspreisNum = parseVal(kitchen.hauspreis);
     const basisEndpreisNum = basisHauspreisNum > 0 ? basisHauspreisNum : basisCalculatedVK;
 
-    // Option calculations
-    const optEkMoebelNum = parseVal(optK.ekMoebel);
-    const optRabattMoebelNum = parseVal(optK.rabattMoebel);
-    const optVkMoebelNum = optEkMoebelNum * moebelFactor * (1 - optRabattMoebelNum / 100);
-    let optSumMieleBrutto = 0;
-    (optK.miele || []).forEach((m) => (optSumMieleBrutto += parseVal(m.val)));
-    const optRabattMieleNum = parseVal(optK.rabattMiele);
-    const optVkMieleNum = optSumMieleBrutto * (1 - optRabattMieleNum / 100);
-    let optVkWasserNum = 0;
-    (optK.wasser || []).forEach((w) => (optVkWasserNum += parseVal(w.val)));
-
-    const optVkMoebelUndGeraeteNum = optVkMoebelNum + optVkMieleNum + optVkWasserNum;
-    const optVkSteinNum = parseVal(optK.steinVK);
-    const optCalculatedVK = optVkMoebelUndGeraeteNum + optVkSteinNum;
-    const optHauspreisNum = parseVal(optK.hauspreis);
-    const optEndpreisNum = optHauspreisNum > 0 ? optHauspreisNum : optCalculatedVK;
-
     const diffMoebelVK = optVkMoebelUndGeraeteNum - basisVkMoebelUndGeraeteNum;
     const diffSteinVK = optVkSteinNum - basisVkSteinNum;
     const diffGesamtVK = optEndpreisNum - basisEndpreisNum;
 
     return (
       <div key={opt.id} className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2.5 text-left shadow-md">
-        <div className="flex items-start justify-between gap-2 border-b border-slate-800/80 pb-2">
+        <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className={`px-2 py-0.5 text-[8px] font-black uppercase rounded tracking-wider border ${
@@ -398,16 +447,37 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
               }`}>
                 {label}
               </span>
-              <span className="text-[10px] text-slate-200 font-bold truncate max-w-[130px]" title={opt.fileName}>
+              <span className="text-[10px] text-slate-200 font-bold truncate max-w-[110px]" title={opt.fileName}>
                 {opt.fileName}
               </span>
             </div>
           </div>
-          <div className="text-right shrink-0">
-            <span className="text-[8px] text-slate-400 uppercase font-bold block">Gesamt VK</span>
-            <span className="text-xs font-black text-white font-mono">
-              {formatMoney(optEndpreisNum)}
-            </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => toggleIgnoreDiscount(opt.slotIndex)}
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                isIgnored
+                  ? 'bg-slate-800/80 text-slate-400 border-slate-700/80 hover:text-slate-200'
+                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25'
+              }`}
+              title={isIgnored ? 'Rabatt ist AUS (Regulärer Preis). Klicken zum Aktivieren.' : 'Rabatt ist AN (Konditionen aus Hauptauftrag). Klicken zum Deaktivieren.'}
+            >
+              <span className="text-[10px] font-black font-mono leading-none">%</span>
+              <span className={`w-4 h-2.5 rounded-full p-0.5 flex items-center transition-colors ${
+                isIgnored ? 'bg-slate-700 justify-start' : 'bg-emerald-500 justify-end'
+              }`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-white block shadow-xs" />
+              </span>
+            </button>
+            <div className="text-right shrink-0">
+              <span className="text-[8px] text-slate-400 uppercase font-bold block">
+                {isIgnored ? 'Regulär VK' : 'Gesamt VK'}
+              </span>
+              <span className={`text-xs font-black font-mono ${isIgnored ? 'text-slate-300' : 'text-white'}`}>
+                {formatMoney(optEndpreisNum)}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -504,7 +574,6 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   return (
     <div id="tab-kitchen" className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-start pb-36 lg:pb-0">
       <div className="lg:col-span-3 space-y-3.5">
-
         <div className="card p-4 relative overflow-hidden group/card hover:border-blue-500/35 hover:shadow-xl transition-all duration-300">
           
           {/* Der Glow-Hintergrundkreis */}
@@ -837,20 +906,42 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
               >
                 {currentKitchen.showMoebelEK ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
               </button>
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder shadow-sm" title={`Maximal ${config?.maxRabattMoebel ?? 5}%`}>
+              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder shadow-sm" title={activeVersionTab !== 0 ? (currentIsIgnored ? 'Rabatt pausiert' : `Übernommen aus Hauptauftrag (Maximal ${config?.maxRabattMoebel ?? 5}%)`) : `Maximal ${config?.maxRabattMoebel ?? 5}%`}>
                 <span className="text-[8px] font-black text-slate-700 dark:text-slate-300 uppercase">Möbel-Rabatt:</span>
                 <div className="relative w-10 shrink-0">
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={currentKitchen.rabattMoebel || ''}
+                    value={currentIsIgnored ? '0' : (kitchen.rabattMoebel || '')}
                     onChange={(e) => updateField('rabattMoebel', e.target.value)}
-                    className="bg-transparent border-b border-transparent focus:border-blue-500 outline-none font-mono text-xs text-center text-red-650 dark:text-red-400 w-full py-0.5 font-bold"
+                    disabled={currentIsIgnored}
+                    className={`bg-transparent border-b border-transparent focus:border-blue-500 outline-none font-mono text-xs text-center w-full py-0.5 font-bold ${
+                      currentIsIgnored ? 'text-slate-400 line-through' : 'text-red-650 dark:text-red-400'
+                    }`}
                     placeholder="0"
                   />
                   <span className="absolute right-0 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-500">%</span>
                 </div>
               </div>
+              {activeVersionTab !== 0 && (
+                <button
+                  type="button"
+                  onClick={() => toggleIgnoreDiscount(activeVersionTab)}
+                  className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                    currentIsIgnored
+                      ? 'bg-slate-200 dark:bg-slate-800/80 text-slate-400 border-slate-300 dark:border-slate-700'
+                      : 'bg-emerald-500/15 text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/25'
+                  }`}
+                  title={currentIsIgnored ? 'Rabatt ist AUS. Klicken zum Einschalten.' : 'Rabatt ist AN. Klicken zum Ausschalten.'}
+                >
+                  <span className="text-[10px] font-black font-mono leading-none">%</span>
+                  <span className={`w-4 h-2.5 rounded-full p-0.5 flex items-center transition-colors ${
+                    currentIsIgnored ? 'bg-slate-400 dark:bg-slate-600 justify-start' : 'bg-emerald-500 justify-end'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-white block shadow-xs" />
+                  </span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -887,15 +978,18 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                 <label className="text-[9px] font-black text-slate-655 dark:text-slate-300 uppercase">{block.label}</label>
                 <div className="flex items-center gap-2">
                   {block.mieleRabatt && (
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder" title={`Maximal ${config?.maxRabattMiele ?? 3}%`}>
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder" title={activeVersionTab !== 0 ? `Übernommen aus Hauptauftrag (Maximal ${config?.maxRabattMiele ?? 3}%)` : `Maximal ${config?.maxRabattMiele ?? 3}%`}>
                       <span className="text-[8px] font-black text-slate-700 dark:text-slate-300 uppercase">Miele-Rabatt:</span>
                       <div className="relative w-10 shrink-0">
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={currentKitchen.rabattMiele || ''}
+                          value={currentIsIgnored ? '0' : (kitchen.rabattMiele || '')}
                           onChange={(e) => updateField('rabattMiele', e.target.value)}
-                          className="bg-transparent border-b border-transparent focus:border-blue-500 outline-none font-mono text-xs text-center text-red-650 dark:text-red-400 w-full py-0.5 font-bold"
+                          disabled={currentIsIgnored}
+                          className={`bg-transparent border-b border-transparent focus:border-blue-500 outline-none font-mono text-xs text-center w-full py-0.5 font-bold ${
+                            currentIsIgnored ? 'text-slate-400 line-through' : 'text-red-650 dark:text-red-400'
+                          }`}
                           placeholder="0"
                         />
                         <span className="absolute right-0 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-500">%</span>
@@ -1309,13 +1403,35 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                     </div>
 
                     {opt1 ? (
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-200 truncate" title={opt1.fileName}>
+                      <div className="space-y-1.5">
+                        <p className="text-[9.5px] font-bold text-slate-200 truncate" title={opt1.fileName}>
                           📄 {opt1.fileName}
                         </p>
-                        <p className="text-[8px] font-mono text-emerald-400 font-bold">
-                          {formatMoney(opt1.finalDisplayVK || opt1.totalCalculatedVK)}
-                        </p>
+                        <div className="flex items-center justify-center gap-2 py-0.5">
+                          <p className={`text-xs sm:text-sm font-mono font-black tracking-tight ${ignoredDiscounts[1] ? 'text-slate-300' : 'text-emerald-400'}`}>
+                            {formatMoney(getOptionCalculations(opt1).optEndpreisNum)}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleIgnoreDiscount(1);
+                            }}
+                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border cursor-pointer transition-all ${
+                              ignoredDiscounts[1]
+                                ? 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                                : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                            }`}
+                            title={ignoredDiscounts[1] ? 'Rabatt ist AUS (Regulärer Preis). Klicken zum Aktivieren.' : 'Rabatt ist AN. Klicken zum Deaktivieren.'}
+                          >
+                            <span className="text-[10px] font-black font-mono leading-none">%</span>
+                            <span className={`w-4 h-2.5 rounded-full p-0.5 flex items-center transition-colors ${
+                              ignoredDiscounts[1] ? 'bg-slate-600 justify-start' : 'bg-emerald-500 justify-end'
+                            }`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-white block shadow-xs" />
+                            </span>
+                          </button>
+                        </div>
                         <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/60 mt-1.5 gap-1">
                           <button
                             type="button"
@@ -1390,13 +1506,35 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                     </div>
 
                     {opt2 ? (
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-200 truncate" title={opt2.fileName}>
+                      <div className="space-y-1.5">
+                        <p className="text-[9.5px] font-bold text-slate-200 truncate" title={opt2.fileName}>
                           📄 {opt2.fileName}
                         </p>
-                        <p className="text-[8px] font-mono text-purple-400 font-bold">
-                          {formatMoney(opt2.finalDisplayVK || opt2.totalCalculatedVK)}
-                        </p>
+                        <div className="flex items-center justify-center gap-2 py-0.5">
+                          <p className={`text-xs sm:text-sm font-mono font-black tracking-tight ${ignoredDiscounts[2] ? 'text-slate-300' : 'text-purple-400'}`}>
+                            {formatMoney(getOptionCalculations(opt2).optEndpreisNum)}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleIgnoreDiscount(2);
+                            }}
+                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full border cursor-pointer transition-all ${
+                              ignoredDiscounts[2]
+                                ? 'bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200'
+                                : 'bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30'
+                            }`}
+                            title={ignoredDiscounts[2] ? 'Rabatt ist AUS (Regulärer Preis). Klicken zum Aktivieren.' : 'Rabatt ist AN. Klicken zum Deaktivieren.'}
+                          >
+                            <span className="text-[10px] font-black font-mono leading-none">%</span>
+                            <span className={`w-4 h-2.5 rounded-full p-0.5 flex items-center transition-colors ${
+                              ignoredDiscounts[2] ? 'bg-slate-600 justify-start' : 'bg-purple-500 justify-end'
+                            }`}>
+                              <span className="w-1.5 h-1.5 rounded-full bg-white block shadow-xs" />
+                            </span>
+                          </button>
+                        </div>
                         <div className="flex items-center justify-between pt-1.5 border-t border-slate-800/60 mt-1.5 gap-1">
                           <button
                             type="button"

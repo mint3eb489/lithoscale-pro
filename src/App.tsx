@@ -1537,10 +1537,16 @@ export default function App() {
     let wasserVK = 0;
     newWasser.forEach((w) => { wasserVK += parseNum(w.val); });
 
+    const basisRabattMoebel = kitchen.rabattMoebel || '';
+    const basisRabattMiele = kitchen.rabattMiele || '';
+    const rabattMoebelNum = parseFloat(String(basisRabattMoebel).replace(',', '.')) || 0;
+    const rabattMieleNum = parseFloat(String(basisRabattMiele).replace(',', '.')) || 0;
+
     const moebelFactor = personalFactors?.moebelFactor ?? config.moebelFactor ?? 2.0;
-    const vkMoebel = sumMoebelEK * moebelFactor;
+    const vkMoebel = sumMoebelEK * moebelFactor * (1 - rabattMoebelNum / 100);
     const vkStein = parseNum(apPriceVK);
-    const totalCalculatedVK = vkMoebel + wasserVK + vkStein + mieleVK;
+    const vkMieleDiscounted = mieleVK * (1 - rabattMieleNum / 100);
+    const totalCalculatedVK = vkMoebel + wasserVK + vkStein + vkMieleDiscounted;
 
     const parsedKitchenData: Kitchen = {
       offerId: kitchen.offerId,
@@ -1552,8 +1558,8 @@ export default function App() {
       apName: apName,
       hauspreis: '',
       ekMoebel: sumMoebelEK > 0 ? sumMoebelEK.toFixed(2).replace('.', ',') : '',
-      rabattMoebel: '',
-      rabattMiele: '',
+      rabattMoebel: basisRabattMoebel,
+      rabattMiele: basisRabattMiele,
       geraete: newGeraete.length > 0 ? newGeraete : [{ id: Date.now(), name: '', val: '' }],
       miele: newMiele.length > 0 ? newMiele : [{ id: Date.now() + 1, name: '', val: '' }],
       spuele: newSpuele.length > 0 ? newSpuele : [{ id: Date.now() + 3, name: '', val: '' }],
