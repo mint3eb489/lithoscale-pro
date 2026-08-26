@@ -243,13 +243,26 @@ export default function App() {
 
   // Handle Dark mode toggle
   useEffect(() => {
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]') || document.createElement('meta');
+    themeColorMeta.setAttribute('name', 'theme-color');
+
+    const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') || document.createElement('meta');
+    statusBarMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+
     if (dark) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('ls_theme', 'dark');
+      themeColorMeta.setAttribute('content', '#000000');
+      statusBarMeta.setAttribute('content', 'black-translucent');
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('ls_theme', 'light');
+      themeColorMeta.setAttribute('content', '#f8fafc');
+      statusBarMeta.setAttribute('content', 'default');
     }
+
+    if (!themeColorMeta.parentElement) document.head.appendChild(themeColorMeta);
+    if (!statusBarMeta.parentElement) document.head.appendChild(statusBarMeta);
   }, [dark]);
 
   // Auth synchronization subscriptions
