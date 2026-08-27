@@ -59,6 +59,7 @@ export interface AppConfig {
   importGeraete: string;
   importBlancoChoiceArt1: string;
   importBlancoChoiceArt2: string;
+  importBlancoChoiceArticles?: string;
   importMoebel: string;
 }
 
@@ -258,6 +259,32 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
     importGeraete: "bosch, neff, siemens, berbel, naber",
     importBlancoChoiceArt1: "527656",
     importBlancoChoiceArt2: "527660",
+    importBlancoChoiceArticles: "527656, 527660",
     importMoebel: "edition 700, concept130"
   }
 };
+
+/**
+ * Extracts and normalizes all configured Blanco Choice article numbers from AppConfig.
+ */
+export function getBlancoChoiceArticleList(cfg?: Partial<AppConfig>): string[] {
+  if (!cfg) return ['527656', '527660'];
+  const rawList: string[] = [];
+  if (cfg.importBlancoChoiceArt1) rawList.push(...cfg.importBlancoChoiceArt1.split(/[,;\s\n]+/));
+  if (cfg.importBlancoChoiceArt2) rawList.push(...cfg.importBlancoChoiceArt2.split(/[,;\s\n]+/));
+  if (cfg.importBlancoChoiceArticles) rawList.push(...cfg.importBlancoChoiceArticles.split(/[,;\s\n]+/));
+
+  const cleaned = rawList
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length > 0);
+
+  const unique: string[] = [];
+  cleaned.forEach((item) => {
+    if (!unique.includes(item)) {
+      unique.push(item);
+    }
+  });
+
+  return unique.length > 0 ? unique : ['527656', '527660'];
+}
+

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db, internalAppId, handleFirestoreError, OperationType } from './firebase';
-import { Stone, AppConfig, Part, Kitchen, KitchenVersionOption, Offer, DEFAULTS, UserProfile, SavedCalculation } from './types';
+import { Stone, AppConfig, Part, Kitchen, KitchenVersionOption, Offer, DEFAULTS, UserProfile, SavedCalculation, getBlancoChoiceArticleList } from './types';
 import { DEFAULT_STONES } from './data/defaultStones';
 import { Navigation } from './components/Navigation';
 import { CalculatorTab } from './components/CalculatorTab';
@@ -1510,19 +1510,25 @@ export default function App() {
 
       countItems++;
       const artStr = art.toString();
+      const artLower = artStr.toLowerCase();
+      const blancoChoiceList = getBlancoChoiceArticleList(config);
+      const isBlancoChoice = blancoChoiceList.some((artNr) => {
+        if (!artNr) return false;
+        const cleanArt = artLower.replace(/[\s\-_.]/g, '');
+        const cleanTarget = artNr.toLowerCase().replace(/[\s\-_.]/g, '');
+        return (
+          artLower.includes(artNr.toLowerCase()) ||
+          (cleanTarget.length >= 3 && cleanArt.includes(cleanTarget))
+        );
+      });
 
       if (checkMatch(cat, config.importMiele)) {
         newMiele.push({ id: Date.now() + Math.random(), name: art, val: vk ? vk.toString() : '' });
+      } else if (isBlancoChoice) {
+        foundBlancoChoice = true;
       } else if (checkMatch(cat, config.importSpuele)) {
-        if (
-          (config.importBlancoChoiceArt1 && artStr.includes(config.importBlancoChoiceArt1)) ||
-          (config.importBlancoChoiceArt2 && artStr.includes(config.importBlancoChoiceArt2))
-        ) {
-          foundBlancoChoice = true;
-        } else {
-          sumMoebelEK += ek;
-          newSpuele.push({ id: Date.now() + Math.random(), name: art, val: '' });
-        }
+        sumMoebelEK += ek;
+        newSpuele.push({ id: Date.now() + Math.random(), name: art, val: '' });
       } else if (checkMatch(cat, config.importWasser)) {
         newWasser.push({ id: Date.now() + Math.random(), name: art, val: '3000' });
       } else if (checkMatch(cat, config.importStein)) {
