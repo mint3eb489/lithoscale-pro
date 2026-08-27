@@ -1506,7 +1506,15 @@ export default function App() {
       const vk = colVk > -1 ? parseNum(row[colVk]) : 0;
 
       if (!cat && !art && ek === 0 && vk === 0) continue;
-      if (cat.includes('lager') && !art.toLowerCase().includes('anschlüsse')) continue;
+      // Filter: Artikel im Katalog 'Lager' (z.B. 'LM') werden ignoriert (außer Anschlüsse)
+      if (
+        cat.includes('lager') &&
+        !art.toLowerCase().includes('anschlüsse') &&
+        !art.toLowerCase().includes('anschluesse') &&
+        !art.toLowerCase().includes('anschluss')
+      ) {
+        continue;
+      }
 
       countItems++;
       const artStr = art.toString();

@@ -1022,9 +1022,15 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                 />
               </div>
               
-              <p className="text-[10px] text-slate-400 leading-normal">
-                Standardmäßig werden alle nicht zugeordneten Excel-Zeilen als Möbel-EK aufaddiert, um Lücken in der Kalkulation zu vermeiden.
-              </p>
+              <div className="space-y-1.5 pt-1 border-t border-slate-100 dark:border-zinc-800/80">
+                <p className="text-[10px] text-slate-400 leading-normal">
+                  Standardmäßig werden alle nicht zugeordneten Excel-Zeilen als Möbel-EK aufaddiert, um Lücken in der Kalkulation zu vermeiden.
+                </p>
+                <div className="p-2 rounded-lg bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 text-[10px] text-amber-700 dark:text-amber-300 space-y-0.5">
+                  <span className="font-bold block">Ausschluss-Regel (Katalog "Lager"):</span>
+                  <span>Artikel im Katalog <strong>Lager</strong> (z.B. Artikel <strong>"LM"</strong>) werden beim Import automatisch ignoriert und belasten den Möbel-EK nicht (außer es handelt sich um Anschlüsse).</span>
+                </div>
+              </div>
             </div>
 
             {/* Box 2: Premium-Geräte & Zubehör (Blue Theme) */}
