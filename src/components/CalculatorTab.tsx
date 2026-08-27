@@ -1047,14 +1047,15 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           pointerEvents: isInputFocused ? 'none' : 'auto',
         }}
       >
+        {/* Clickable Sheet Header / Pull Bar */}
         <div
-          className="bg-white/95 dark:bg-black/95 backdrop-blur-xl p-4 rounded-t-3xl cursor-pointer shrink-0 border-b border-darkBorder active:bg-slate-100 dark:active:bg-slate-900 transition-colors"
+          className="bg-black/95 backdrop-blur-xl p-4 rounded-t-3xl cursor-pointer shrink-0 border-b border-zinc-800/80 active:bg-zinc-900 transition-colors"
           onClick={() => setMobileSheetOpen(!mobileSheetOpen)}
         >
-          <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
+          <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-3" />
           <div className="flex justify-between items-center max-w-4xl mx-auto px-2">
             <div>
-              <p className="text-[10px] font-black text-slate-555 uppercase tracking-widest">Zusammenfassung</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Zusammenfassung</p>
               <p className="text-[8px] text-slate-400 italic">VK Brutto</p>
             </div>
             <div className="flex items-center gap-3">

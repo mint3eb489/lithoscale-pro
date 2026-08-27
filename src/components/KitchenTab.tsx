@@ -56,6 +56,11 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   const slot0InputRef = useRef<HTMLInputElement>(null);
   const slot1InputRef = useRef<HTMLInputElement>(null);
   const slot2InputRef = useRef<HTMLInputElement>(null);
+  const mobileSlot0InputRef = useRef<HTMLInputElement>(null);
+  const mobileSlot1InputRef = useRef<HTMLInputElement>(null);
+  const mobileSlot2InputRef = useRef<HTMLInputElement>(null);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
   const [showSavedCalcsDropdown, setShowSavedCalcsDropdown] = useState(false);
   const [isDiffBoxOpen, setIsDiffBoxOpen] = useState(false);
   const [activeVersionTab, setActiveVersionTab] = useState<number>(0); // 0 = Hauptauftrag (Basis), 1 = Option 1, 2 = Option 2
@@ -64,6 +69,29 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     2: false,
   });
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleFocusChange = () => {
+      const activeEl = document.activeElement;
+      const isInput = activeEl && (
+        activeEl.tagName === 'INPUT' || 
+        activeEl.tagName === 'TEXTAREA' || 
+        activeEl.getAttribute('contenteditable') === 'true'
+      );
+      setIsInputFocused(!!isInput);
+    };
+
+    document.addEventListener('focusin', handleFocusChange);
+    const handleFocusOut = () => {
+      setTimeout(handleFocusChange, 50);
+    };
+    document.addEventListener('focusout', handleFocusOut);
+
+    return () => {
+      document.removeEventListener('focusin', handleFocusChange);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, []);
 
   const toggleIgnoreDiscount = (slotIndex: number) => {
     setIgnoredDiscounts((prev) => ({
@@ -897,32 +925,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
         <div className="card p-4 relative overflow-hidden group/card hover:border-slate-300 dark:hover:border-slate-800 transition-all duration-300">
           <div className="flex justify-between items-center mb-3 border-b border-slate-200 dark:border-darkBorder pb-2">
             <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">2. Kalkulation</h2>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => updateField('showMoebelEK', !currentKitchen.showMoebelEK)}
-                className="text-slate-650 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400 transition-all focus:outline-none flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 p-1 rounded-lg bg-slate-100 dark:bg-[#1a1a1a] border border-slate-330 dark:border-darkBorder shadow-sm"
-                title={currentKitchen.showMoebelEK ? 'EK & Erklärungen verbergen' : 'EK & Erklärungen einblenden'}
-              >
-                {currentKitchen.showMoebelEK ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-              </button>
-              <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder shadow-sm" title={activeVersionTab !== 0 ? (currentIsIgnored ? 'Rabatt pausiert' : `Übernommen aus Hauptauftrag (Maximal ${config?.maxRabattMoebel ?? 5}%)`) : `Maximal ${config?.maxRabattMoebel ?? 5}%`}>
-                <span className="text-[8px] font-black text-slate-700 dark:text-slate-300 uppercase">Möbel-Rabatt:</span>
-                <div className="relative w-10 shrink-0">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={currentIsIgnored ? '0' : (kitchen.rabattMoebel || '')}
-                    onChange={(e) => updateField('rabattMoebel', e.target.value)}
-                    disabled={currentIsIgnored}
-                    className={`bg-transparent border-b border-transparent focus:border-blue-500 outline-none font-mono text-xs text-center w-full py-0.5 font-bold ${
-                      currentIsIgnored ? 'text-slate-400 line-through' : 'text-red-650 dark:text-red-400'
-                    }`}
-                    placeholder="0"
-                  />
-                  <span className="absolute right-0 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-500">%</span>
-                </div>
-              </div>
+            <div className="flex items-center gap-2">
               {activeVersionTab !== 0 && (
                 <button
                   type="button"
@@ -942,6 +945,34 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                   </span>
                 </button>
               )}
+              <div 
+                className="flex items-center justify-center bg-slate-100 dark:bg-[#1a1a1a] h-7 w-16 px-1.5 rounded-md border border-slate-330 dark:border-darkBorder shadow-sm" 
+                title={activeVersionTab !== 0 ? (currentIsIgnored ? 'Möbel-Rabatt pausiert' : `Möbel-Rabatt: Übernommen aus Hauptauftrag (Maximal ${config?.maxRabattMoebel ?? 5}%)`) : `Möbel-Rabatt: Maximal ${config?.maxRabattMoebel ?? 5}%`}
+              >
+                <div className="relative w-full flex items-center">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={currentIsIgnored ? '0' : (kitchen.rabattMoebel || '')}
+                    onChange={(e) => updateField('rabattMoebel', e.target.value)}
+                    disabled={currentIsIgnored}
+                    className={`bg-transparent outline-none font-mono text-xs text-center w-full pr-3 py-0.5 font-bold ${
+                      currentIsIgnored ? 'text-slate-400 line-through' : 'text-red-650 dark:text-red-400'
+                    }`}
+                    placeholder="0"
+                    title={`Möbel-Rabatt in % (Maximal ${config?.maxRabattMoebel ?? 5}%)`}
+                  />
+                  <span className="absolute right-0.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500 select-none pointer-events-none">%</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateField('showMoebelEK', !currentKitchen.showMoebelEK)}
+                className="w-7 h-7 rounded-md flex items-center justify-center text-slate-650 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400 bg-slate-100 dark:bg-[#1a1a1a] border border-slate-330 dark:border-darkBorder shadow-sm transition-all focus:outline-none cursor-pointer hover:scale-110 active:scale-95"
+                title={currentKitchen.showMoebelEK ? 'EK & Erklärungen verbergen' : 'EK & Erklärungen einblenden'}
+              >
+                {currentKitchen.showMoebelEK ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
             </div>
           </div>
 
@@ -978,21 +1009,24 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                 <label className="text-[9px] font-black text-slate-655 dark:text-slate-300 uppercase">{block.label}</label>
                 <div className="flex items-center gap-2">
                   {block.mieleRabatt && (
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#1a1a1a] px-2 py-0.5 rounded-lg border border-slate-330 dark:border-darkBorder" title={activeVersionTab !== 0 ? `Übernommen aus Hauptauftrag (Maximal ${config?.maxRabattMiele ?? 3}%)` : `Maximal ${config?.maxRabattMiele ?? 3}%`}>
-                      <span className="text-[8px] font-black text-slate-700 dark:text-slate-300 uppercase">Miele-Rabatt:</span>
-                      <div className="relative w-10 shrink-0">
+                    <div 
+                      className="flex items-center justify-center bg-slate-100 dark:bg-[#1a1a1a] h-7 w-16 px-1.5 rounded-md border border-slate-330 dark:border-darkBorder shadow-sm" 
+                      title={activeVersionTab !== 0 ? `Miele-Rabatt: Übernommen aus Hauptauftrag (Maximal ${config?.maxRabattMiele ?? 3}%)` : `Miele-Rabatt: Maximal ${config?.maxRabattMiele ?? 3}%`}
+                    >
+                      <div className="relative w-full flex items-center">
                         <input
                           type="text"
                           inputMode="decimal"
                           value={currentIsIgnored ? '0' : (kitchen.rabattMiele || '')}
                           onChange={(e) => updateField('rabattMiele', e.target.value)}
                           disabled={currentIsIgnored}
-                          className={`bg-transparent border-b border-transparent focus:border-blue-500 outline-none font-mono text-xs text-center w-full py-0.5 font-bold ${
+                          className={`bg-transparent outline-none font-mono text-xs text-center w-full pr-3 py-0.5 font-bold ${
                             currentIsIgnored ? 'text-slate-400 line-through' : 'text-red-650 dark:text-red-400'
                           }`}
                           placeholder="0"
+                          title={`Miele-Rabatt in % (Maximal ${config?.maxRabattMiele ?? 3}%)`}
                         />
-                        <span className="absolute right-0 top-1/2 -translate-y-1/2 text-[8px] font-black text-slate-500">%</span>
+                        <span className="absolute right-0.5 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-500 select-none pointer-events-none">%</span>
                       </div>
                     </div>
                   )}
@@ -1192,8 +1226,8 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
         </div>
       </div>
 
-      {/* FIXED OFFERS SIDEBAR COMPONENT */}
-      <div className="lg:col-span-2 lg:sticky lg:top-10 space-y-4">
+      {/* FIXED OFFERS SIDEBAR COMPONENT (DESKTOP) */}
+      <div className="hidden lg:block lg:col-span-2 lg:sticky lg:top-10 space-y-4">
         <div className="p-4 md:p-5 bg-black text-white rounded-2xl shadow-2xl border border-slate-900 transition-all duration-300 relative overflow-hidden group/card">
           
           {/* Der Glow-Hintergrundkreis */}
@@ -1609,6 +1643,279 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
             )}
           </div>
         )}
+      </div>
+
+      {/* MOBILE BOTTOM SLIDING SHEET (LIKE STEINRECHNER) */}
+      <div
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 ${
+          mobileSheetOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => setMobileSheetOpen(false)}
+      />
+
+      <div
+        className="fixed left-0 right-0 bottom-0 z-50 lg:hidden flex flex-col max-h-[85vh] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] rounded-t-3xl bg-black border-t border-darkBorder transition-all duration-300 ease-out"
+        style={{
+          paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))',
+          transform: isInputFocused
+            ? 'translateY(100%)'
+            : mobileSheetOpen
+              ? 'translateY(0)'
+              : 'translateY(calc(100% - 82px - env(safe-area-inset-bottom, 0px)))',
+          opacity: isInputFocused ? 0 : 1,
+          pointerEvents: isInputFocused ? 'none' : 'auto',
+        }}
+      >
+        {/* Clickable Sheet Header / Pull Bar */}
+        <div
+          className="bg-black/95 backdrop-blur-xl p-4 rounded-t-3xl cursor-pointer shrink-0 border-b border-zinc-800/80 active:bg-zinc-900 transition-colors"
+          onClick={() => setMobileSheetOpen(!mobileSheetOpen)}
+        >
+          <div className="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-3" />
+          <div className="flex justify-between items-center max-w-4xl mx-auto px-2">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                {activeVersionTab === 1 ? 'Alternative 1' : activeVersionTab === 2 ? 'Alternative 2' : 'Angebot'}
+                {activeVersionTab !== 0 && (
+                  <span className="px-1 py-0.2 text-[8px] font-bold rounded bg-blue-500/20 text-blue-400">Aktiv</span>
+                )}
+              </p>
+              <p className="text-[8px] text-slate-400 italic">Gesamt-VK Brutto</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <p className="text-2xl font-black text-blue-500 tracking-tighter font-mono-tabular">
+                <AnimatedNumber value={finalDisplayVK} formatter={formatMoney} />
+              </p>
+              <span className={`w-5 h-5 text-slate-400 transform transition-transform ${mobileSheetOpen ? 'rotate-180' : ''}`}>▼</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable Sheet Content */}
+        <div className="p-4 md:p-6 overflow-y-auto text-white pb-safe space-y-4">
+          {/* Optional: Version Switcher Tabs on mobile */}
+          {(opt1 || opt2) && (
+            <div className="flex items-center gap-1.5 bg-zinc-900/80 p-1.5 rounded-xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setActiveVersionTab(0)}
+                className={`flex-1 py-1.5 text-[9px] font-bold rounded-lg transition-all cursor-pointer text-center ${
+                  activeVersionTab === 0
+                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40 shadow-xs font-bold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Hauptauftrag
+              </button>
+              {opt1 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveVersionTab(1)}
+                  className={`flex-1 py-1.5 text-[9px] font-bold rounded-lg transition-all cursor-pointer text-center ${
+                    activeVersionTab === 1
+                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-xs font-bold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Alternative 1
+                </button>
+              )}
+              {opt2 && (
+                <button
+                  type="button"
+                  onClick={() => setActiveVersionTab(2)}
+                  className={`flex-1 py-1.5 text-[9px] font-bold rounded-lg transition-all cursor-pointer text-center ${
+                    activeVersionTab === 2
+                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 shadow-xs font-bold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  Alternative 2
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Preisbox Gesamt-VK */}
+          <div className="p-4 bg-white/5 rounded-xl border border-blue-600/30 text-center shadow-inner relative overflow-hidden">
+            <div className="absolute inset-0 bg-blue-500/5" />
+            <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1 relative">Gesamt-VK (Brutto)</p>
+            <p className="text-3xl font-black text-blue-400 tracking-tighter font-mono-tabular relative">
+              <AnimatedNumber value={finalDisplayVK} formatter={formatMoney} />
+            </p>
+          </div>
+
+          {/* Montage Anteil */}
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-2.5 text-center">
+            <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-0.5 leading-relaxed">
+              Darin enthaltene Lieferung & Montage (9,5%)
+            </p>
+            <p className="text-sm font-black text-emerald-400 font-mono-tabular">
+              <AnimatedNumber value={proportionMontage} formatter={formatMoney} />
+            </p>
+          </div>
+
+          {/* Actions */}
+          <button
+            type="button"
+            onClick={onGeneratePDF}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-xs uppercase tracking-widest shadow-lg shadow-blue-600/25 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Download className="w-4 h-4" />
+            PDF generieren
+          </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={onGeneratePDFPreview}
+              className="py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-600/25 active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Eye className="w-4 h-4" />
+              Vorschau
+            </button>
+
+            <button
+              type="button"
+              onClick={onSaveOffer}
+              className="py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer text-center"
+            >
+              In Cloud speichern
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={onResetKitchen}
+            className="w-full py-2.5 flex items-center justify-center border border-red-500/20 text-red-500 hover:bg-red-500/10 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 cursor-pointer"
+          >
+            Kalkulation leeren
+          </button>
+
+          {/* EXCEL UPLOAD SLOT HAUPTAUFTRAG (MOBILE) */}
+          <div className="pt-3 border-t border-slate-900 space-y-2">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 text-left flex items-center gap-1.5">
+              <FileSpreadsheet className="w-3.5 h-3.5 text-blue-400" />
+              Import (Hauptauftrag)
+            </p>
+
+            <div
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleSlotDrop(e, 0)}
+              onClick={() => mobileSlot0InputRef.current?.click()}
+              className="border-2 border-dashed border-blue-500/40 hover:border-blue-400 bg-blue-500/5 hover:bg-blue-500/10 rounded-xl p-3 text-center cursor-pointer transition-all group relative"
+            >
+              <input
+                type="file"
+                ref={mobileSlot0InputRef}
+                onChange={(e) => {
+                  if (e.target.files?.length) {
+                    if (onImportCaratFiles) {
+                      onImportCaratFiles([e.target.files[0]], 0);
+                    } else {
+                      onImportCaratXLSX(e.target.files[0]);
+                    }
+                  }
+                }}
+                className="hidden"
+                accept=".xlsx,.xls,.csv"
+              />
+              <UploadCloud className="w-5 h-5 text-blue-400 mx-auto mb-1 group-hover:scale-110 transition-transform" />
+              <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 text-[8px] font-black uppercase rounded tracking-wider border border-blue-500/30 inline-block mb-1">
+                Hauptauftrag
+              </span>
+              <p className="text-[10px] font-bold text-slate-200 leading-tight">
+                {kitchen.ekMoebel || kitchen.apName ? '✓ Hauptauftrag geladen' : 'Excel-Datei antippen oder ablegen'}
+              </p>
+            </div>
+          </div>
+
+          {/* PREISVERGLEICH (MOBILE) */}
+          {canUsePriceComparison && (
+            <div className="pt-3 border-t border-slate-900 space-y-3">
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-blue-400" />
+                Preisvergleich (Alternativen)
+              </p>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Mobile Slot 1 */}
+                <div
+                  onClick={() => mobileSlot1InputRef.current?.click()}
+                  className="p-2.5 bg-emerald-500/5 border border-emerald-500/30 rounded-xl relative text-center cursor-pointer"
+                >
+                  <input
+                    type="file"
+                    ref={mobileSlot1InputRef}
+                    onChange={(e) => {
+                      if (e.target.files?.length) {
+                        if (onImportCaratFiles) {
+                          onImportCaratFiles([e.target.files[0]], 1);
+                        }
+                      }
+                    }}
+                    className="hidden"
+                    accept=".xlsx,.xls,.csv"
+                  />
+                  <span className="text-[8px] font-black text-emerald-400 uppercase tracking-wider bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/30 inline-block mb-1">
+                    Alternative 1
+                  </span>
+                  {opt1 ? (
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-slate-200 truncate">{opt1.fileName}</p>
+                      <p className={`text-xs font-mono font-black ${ignoredDiscounts[1] ? 'text-slate-300' : 'text-emerald-400'}`}>
+                        {formatMoney(getOptionCalculations(opt1).optEndpreisNum)}
+                      </p>
+                    </div>
+                  ) : (
+                    <Plus className="w-4 h-4 text-emerald-400/80 mx-auto my-1" />
+                  )}
+                </div>
+
+                {/* Mobile Slot 2 */}
+                <div
+                  onClick={() => mobileSlot2InputRef.current?.click()}
+                  className="p-2.5 bg-purple-500/5 border border-purple-500/30 rounded-xl relative text-center cursor-pointer"
+                >
+                  <input
+                    type="file"
+                    ref={mobileSlot2InputRef}
+                    onChange={(e) => {
+                      if (e.target.files?.length) {
+                        if (onImportCaratFiles) {
+                          onImportCaratFiles([e.target.files[0]], 2);
+                        }
+                      }
+                    }}
+                    className="hidden"
+                    accept=".xlsx,.xls,.csv"
+                  />
+                  <span className="text-[8px] font-black text-purple-400 uppercase tracking-wider bg-purple-500/20 px-1.5 py-0.5 rounded border border-purple-500/30 inline-block mb-1">
+                    Alternative 2
+                  </span>
+                  {opt2 ? (
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-bold text-slate-200 truncate">{opt2.fileName}</p>
+                      <p className={`text-xs font-mono font-black ${ignoredDiscounts[2] ? 'text-slate-300' : 'text-purple-400'}`}>
+                        {formatMoney(getOptionCalculations(opt2).optEndpreisNum)}
+                      </p>
+                    </div>
+                  ) : (
+                    <Plus className="w-4 h-4 text-purple-400/80 mx-auto my-1" />
+                  )}
+                </div>
+              </div>
+
+              {(kitchen.versionOptions || []).length > 0 && (
+                <div className="space-y-2 pt-1">
+                  {(kitchen.versionOptions || []).map((opt) =>
+                    renderDiffCard(opt, opt.slotIndex === 1 ? 'Alternative 1' : 'Alternative 2')
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
