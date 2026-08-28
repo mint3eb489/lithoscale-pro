@@ -100,16 +100,9 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
         
         <div className="p-3 md:p-4 bg-white dark:bg-[#121212] relative z-10 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-1.5 mb-1">
-              <p className="font-bold text-xs md:text-sm truncate text-slate-800 dark:text-slate-200 flex-1" title={s.name}>
-                {s.name}
-              </p>
-              <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider shrink-0 ${
-                s.isDekton ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
-              }`}>
-                {s.isDekton ? 'Dekton' : 'Naturstein'}
-              </span>
-            </div>
+            <p className="font-bold text-xs md:text-sm truncate text-slate-800 dark:text-slate-200 mb-1" title={s.name}>
+              {s.name}
+            </p>
             <p className="text-[10px] md:text-xs font-mono font-bold text-slate-500">
               {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(s.price)} / m²
             </p>

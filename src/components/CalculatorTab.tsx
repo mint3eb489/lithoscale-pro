@@ -966,19 +966,19 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </button>
           </div>
 
-          {/* Side-by-Side: Einkaufspreis & Handling / Aufwand */}
+          {/* Side-by-Side: EK (NETTO) & Handling (NETTO) */}
           <div className="grid grid-cols-2 gap-3 mb-2.5 pt-4 border-t border-white/5">
-            {/* Einkaufspreis (netto) */}
+            {/* EK (NETTO) */}
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-center shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[72px]">
-              <p className="text-[8.5px] font-black text-slate-400 uppercase mb-1 tracking-wider leading-tight">Einkaufspreis (netto)</p>
+              <p className="text-[8.5px] font-black text-slate-400 uppercase mb-1 tracking-wider leading-tight">EK (NETTO)</p>
               <p className="text-base font-bold text-slate-200 font-mono tracking-tighter font-mono-tabular">
                 <AnimatedNumber value={res.ek} formatter={formatMoney} />
               </p>
             </div>
 
-            {/* Handling / Aufwand (netto) */}
+            {/* Handling (NETTO) */}
             <div className="p-3 bg-emerald-500/5 rounded-2xl border border-emerald-500/20 text-center shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[72px]">
-              <p className="text-[8.5px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-1 leading-tight relative">Handling / Aufwand (netto)</p>
+              <p className="text-[8.5px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-1 leading-tight relative">Handling (NETTO)</p>
               <p className="text-base font-black text-emerald-500 dark:text-emerald-400 tracking-tighter font-mono-tabular relative">
                 <AnimatedNumber value={res.handling} formatter={formatMoney} />
               </p>
@@ -1191,19 +1191,19 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </button>
           </div>
 
-          {/* Side-by-Side: Einkaufspreis & Handling / Aufwand */}
+          {/* Side-by-Side: EK (NETTO) & Handling (NETTO) */}
           <div className="grid grid-cols-2 gap-3 mb-2.5 pt-4 border-t border-white/5">
-            {/* Einkaufspreis (netto) */}
+            {/* EK (NETTO) */}
             <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-center shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[72px]">
-              <p className="text-[8.5px] font-black text-slate-400 uppercase mb-1 tracking-wider leading-tight">Einkaufspreis (netto)</p>
+              <p className="text-[8.5px] font-black text-slate-400 uppercase mb-1 tracking-wider leading-tight">EK (NETTO)</p>
               <p className="text-base font-bold text-slate-200 font-mono tracking-tighter font-mono-tabular">
                 <AnimatedNumber value={res.ek} formatter={formatMoney} />
               </p>
             </div>
 
-            {/* Handling / Aufwand (netto) */}
+            {/* Handling (NETTO) */}
             <div className="p-3 bg-emerald-500/5 rounded-2xl border border-emerald-500/20 text-center shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[72px]">
-              <p className="text-[8.5px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-1 leading-tight relative">Handling / Aufwand (netto)</p>
+              <p className="text-[8.5px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-1 leading-tight relative">Handling (NETTO)</p>
               <p className="text-base font-black text-emerald-500 dark:text-emerald-400 tracking-tighter font-mono-tabular relative">
                 <AnimatedNumber value={res.handling} formatter={formatMoney} />
               </p>
