@@ -44,7 +44,7 @@ export default function App() {
       const cached = localStorage.getItem('ls_parts');
       if (cached) return JSON.parse(cached);
     } catch {}
-    return [{ id: Date.now(), name: 'Platte 1', l: '', w: '', edges: { v: true, h: false, l: false, r: false } }];
+    return [{ id: Date.now(), name: '', l: '', w: '', edges: { v: true, h: false, l: false, r: false } }];
   });
 
   const [selectedStoneId, setSelectedStoneId] = useState<string>('');
@@ -1967,7 +1967,7 @@ export default function App() {
                 setMiterInput('');
                 setGluingCheck(false);
                 setActiveServices({ measure: true, delivery: true });
-                setParts([{ id: Date.now(), name: 'Platte 1', l: '', w: '', edges: { v: true, h: false, l: false, r: false } }]);
+                setParts([{ id: Date.now(), name: '', l: '', w: '', edges: { v: true, h: false, l: false, r: false } }]);
                 setActiveCalculation(null);
               }}
               openLightbox={(img) => {

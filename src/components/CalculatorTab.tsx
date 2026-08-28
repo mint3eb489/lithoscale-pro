@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Part, SavedCalculation } from '../types';
-import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, RotateCcw, ChevronDown, Search, Bookmark, Save, Trash2, Download, Cloud, TrendingUp } from 'lucide-react';
+import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, ChevronDown, Search, Bookmark, Save, Trash2, Download, Cloud, TrendingUp } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
 interface CalculatorTabProps {
@@ -203,13 +203,40 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
       (activeServices.measure ? config.measure : 0) +
       (activeServices.delivery ? config.delivery : 0);
 
-    const ek = sumMat + sumEdge + sumCut + sumExtra;
+    const ek = Math.round((sumMat + sumEdge + sumCut + sumExtra) * 100) / 100;
     
     // Support per-user custom factor
     const activeFactor = personalFactors?.factor ?? config.factor;
-    const vk = ek * activeFactor;
+    const vkRaw = ek * activeFactor;
 
-    return { totalSqm, totalLfm, sumMat, sumEdge, sumCut, sumExtra, ek, vk };
+    // Handling / Aufwand (netto): Marge auf Basis des Faktors
+    const vkNettoTarget = vkRaw / 1.19;
+    const handling = Math.max(0, Math.round((vkNettoTarget - ek) * 100) / 100);
+
+    // Exakte Kalkulation: ekNetto + handlingNetto + mwst (19%) = Endpreis (VK)
+    const vkNetto = Math.round((ek + handling) * 100) / 100;
+    const vkTax = Math.round(vkNetto * 19) / 100;
+    const vk = Math.round((vkNetto + vkTax) * 100) / 100;
+
+    // 19% MwSt auf EK Netto
+    const ekTax = Math.round(ek * 19) / 100;
+    const ekBrutto = Math.round((ek + ekTax) * 100) / 100;
+
+    return { 
+      totalSqm, 
+      totalLfm, 
+      sumMat, 
+      sumEdge, 
+      sumCut, 
+      sumExtra, 
+      ek, 
+      ekTax, 
+      ekBrutto, 
+      vk, 
+      vkNetto, 
+      vkTax, 
+      handling 
+    };
   };
 
   const res = calculateResult();
@@ -219,7 +246,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
       ...prev,
       {
         id: Date.now(),
-        name: `Platte ${prev.length + 1}`,
+        name: '',
         l: '',
         w: '',
         edges: { v: true, h: false, l: false, r: false },
@@ -308,28 +335,17 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
 
           <div className="relative z-10">
             <div className="flex justify-between items-center mb-5 border-b border-slate-200 dark:border-darkBorder pb-3 relative">
-              <div className="flex items-center gap-2">
-                <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Konfiguration</h2>
-                
-                {/* Dezent Actions */}
-                <div className="flex items-center gap-1.5 ml-1">
-                  <button
-                    onClick={onSaveStat}
-                    type="button"
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/20 active:scale-90 transition-all cursor-pointer text-[8.5px] font-black uppercase tracking-wider shrink-0"
-                    title="In Markttrend übernehmen"
-                  >
-                    <TrendingUp className="w-3.5 h-3.5" />
-                    <span>Markttrend</span>
-                  </button>
-                </div>
-              </div>
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Konfiguration</h2>
               
-              {selectedStone && (
-                <span className={`text-[10px] uppercase px-2 py-0.5 rounded font-black text-white ${(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'bg-red-500' : 'bg-green-500'}`}>
-                  {(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'DEKTON' : 'NATURSTEIN'}
-                </span>
-              )}
+              <button
+                onClick={onSaveStat}
+                type="button"
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/20 dark:hover:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-500/20 active:scale-90 transition-all cursor-pointer text-[8.5px] font-black uppercase tracking-wider shrink-0"
+                title="In Markttrend übernehmen"
+              >
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Markttrend</span>
+              </button>
             </div>
 
           <div className="flex flex-col sm:flex-row gap-5 mb-5">
@@ -454,7 +470,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                         : 'bg-transparent border-emerald-500 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
                     }`}
                   >
-                    Natur
+                    Naturstein
                   </button>
                   <button
                     onClick={() => setActiveFilter('dekton')}
@@ -496,7 +512,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                               ? 'bg-rose-500/10 text-rose-500 dark:text-rose-400'
                               : 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400'
                           }`}>
-                            {(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'Dekton' : 'Natur'}
+                            {(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'Dekton' : 'Naturstein'}
                           </span>
                         )}
                       </div>
@@ -585,7 +601,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                                         ? 'bg-rose-500/10 text-rose-500'
                                         : 'bg-emerald-500/10 text-emerald-500'
                                     }`}>
-                                      {isDekton ? 'Dekton' : 'Natur'}
+                                      {isDekton ? 'Dekton' : 'Naturstein'}
                                     </span>
                                   </div>
                                   <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-0.5 block">
@@ -658,7 +674,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5 sm:space-y-6">
               {parts.map((p) => {
                 const lp = parseFloat(p.l.replace(',', '.')) || 0;
                 const wp = parseFloat(p.w.replace(',', '.')) || 0;
@@ -669,178 +685,127 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                 if (p.edges.l) lfm += wp / 100;
                 if (p.edges.r) lfm += wp / 100;
 
-                const hasAnyValue = lp > 0 || wp > 0;
-
                 return (
                   <div
                     key={p.id}
-                    className="p-3.5 rounded-xl border border-slate-200 dark:border-[#262626] bg-slate-50 dark:bg-black flex flex-col gap-2.5 relative transition-all duration-300 shadow-sm focus-within:border-blue-500"
+                    className="relative w-full rounded-2xl border border-slate-200 dark:border-[#262626] bg-white dark:bg-[#101012] p-4 sm:p-5 flex flex-col justify-between transition-all duration-300 shadow-xs hover:border-slate-300 dark:hover:border-[#333] select-none group/slab overflow-hidden min-h-[120px]"
                   >
-                    {/* Header: Name and badges */}
-                    <div className="flex justify-between items-center gap-2">
-                      <input
-                        type="text"
-                        value={p.name}
-                        onChange={(e) => updatePartField(p.id, 'name', e.target.value)}
-                        className="bg-transparent font-black text-sm outline-none text-slate-700 dark:text-slate-200 focus:text-blue-500 placeholder-slate-400/50 w-2/3 transition-colors text-ellipsis overflow-hidden whitespace-nowrap"
-                        placeholder="Bezeichnung"
-                      />
-                      
-                      <div className="flex items-center gap-2 shrink-0">
-                        {parts.length > 1 && (
-                          <button
-                            onClick={() => removePart(p.id)}
-                            className="text-slate-300 hover:text-red-550 transition-colors w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-500/10 font-bold active:scale-90"
-                            title="Platte löschen"
-                          >
-                            ✕
-                          </button>
-                        )}
+                    {/* --- POLISHED EDGES DIRECTLY ON CARD BORDER WITH ROUNDED INNER CORNERS --- */}
+                    
+                    {/* TOP EDGE button */}
+                    <button
+                      onClick={() => updatePartField(p.id, 'edges-h', null)}
+                      className={`absolute top-0 left-0 right-0 h-1.5 rounded-b-md transition-all active:scale-95 cursor-pointer ${
+                        p.edges.h ? 'z-25 bg-blue-500 shadow-[0_1px_8px_rgba(59,130,246,0.5)]' : 'z-20 bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700'
+                      }`}
+                      title="Oberkante polieren (Hinten / Wand)"
+                    />
+                    {/* TOP Hitbox overlay */}
+                    <div 
+                      onClick={() => updatePartField(p.id, 'edges-h', null)} 
+                      className="absolute top-0 left-0 right-0 h-4 cursor-pointer bg-transparent z-10" 
+                    />
+
+                    {/* BOTTOM EDGE button */}
+                    <button
+                      onClick={() => updatePartField(p.id, 'edges-v', null)}
+                      className={`absolute bottom-0 left-0 right-0 h-1.5 rounded-t-md transition-all active:scale-95 cursor-pointer ${
+                        p.edges.v ? 'z-25 bg-blue-500 shadow-[0_-1px_8px_rgba(59,130,246,0.5)]' : 'z-20 bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700'
+                      }`}
+                      title="Unterkante polieren (Vorne / Sichtkante)"
+                    />
+                    {/* BOTTOM Hitbox overlay */}
+                    <div 
+                      onClick={() => updatePartField(p.id, 'edges-v', null)} 
+                      className="absolute bottom-0 left-0 right-0 h-4 cursor-pointer bg-transparent z-10" 
+                    />
+
+                    {/* LEFT EDGE button */}
+                    <button
+                      onClick={() => updatePartField(p.id, 'edges-l', null)}
+                      className={`absolute top-0 bottom-0 left-0 w-1.5 rounded-r-md transition-all active:scale-95 cursor-pointer ${
+                        p.edges.l ? 'z-25 bg-blue-500 shadow-[1px_0_8px_rgba(59,130,246,0.5)]' : 'z-20 bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700'
+                      }`}
+                      title="Linke Kante polieren"
+                    />
+                    {/* LEFT Hitbox overlay */}
+                    <div 
+                      onClick={() => updatePartField(p.id, 'edges-l', null)} 
+                      className="absolute top-0 bottom-0 left-0 w-4 cursor-pointer bg-transparent z-10" 
+                    />
+
+                    {/* RIGHT EDGE button */}
+                    <button
+                      onClick={() => updatePartField(p.id, 'edges-r', null)}
+                      className={`absolute top-0 bottom-0 right-0 w-1.5 rounded-l-md transition-all active:scale-95 cursor-pointer ${
+                        p.edges.r ? 'z-25 bg-blue-500 shadow-[-1px_0_8px_rgba(59,130,246,0.5)]' : 'z-20 bg-slate-200 hover:bg-slate-300 dark:bg-zinc-800 dark:hover:bg-zinc-700'
+                      }`}
+                      title="Rechte Kante polieren"
+                    />
+                    {/* RIGHT Hitbox overlay */}
+                    <div 
+                      onClick={() => updatePartField(p.id, 'edges-r', null)} 
+                      className="absolute top-0 bottom-0 right-0 w-4 cursor-pointer bg-transparent z-10" 
+                    />
+
+                    {/* HEADER: m² / Lfm Badges (Left) & Delete Button (Right) */}
+                    <div className="flex justify-between items-center z-30 mb-2">
+                      <div className="flex items-center gap-1.5 shrink-0 select-none">
+                        <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-zinc-850 border border-slate-200 dark:border-zinc-800 px-2 py-0.5 rounded-md shrink-0">
+                          {sqm.toFixed(2).replace('.', ',')} m²
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md shrink-0">
+                          {lfm.toFixed(2).replace('.', ',')} Lfm
+                        </span>
                       </div>
+
+                      {parts.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removePart(p.id)}
+                          className="text-slate-400 hover:text-red-500 transition-colors w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-500/10 active:scale-90 cursor-pointer"
+                          title="Platte löschen"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
 
-                    {/* Compact Interactive Boundary Box (nested inside the edge-frame outline) */}
-                    <div className="relative w-full min-h-[115px] border border-slate-200 dark:border-darkBorder rounded-xl flex flex-col items-center justify-center bg-white dark:bg-[#0c0c0e] hover:border-blue-400/50 dark:hover:border-blue-550/30 transition-all select-none group/slab overflow-hidden p-4 shadow-inner">
-                      
-                      {/* --- POLISHED EDGES --- */}
-                      
-                      {/* TOP EDGE button */}
-                      <button
-                        onClick={() => updatePartField(p.id, 'edges-h', null)}
-                        className={`absolute top-0 left-0 right-0 h-1.5 transition-all active:scale-95 cursor-pointer ${
-                          p.edges.h ? 'z-25 bg-blue-500 shadow-[0_1px_6px_rgba(59,130,246,0.4)]' : 'z-20 bg-slate-200 hover:bg-slate-350 dark:bg-zinc-800 dark:hover:bg-zinc-700'
-                        }`}
-                        title="Oberkante polieren (Hinten / Wand)"
-                      />
-                      {/* TOP Hitbox overlay */}
-                      <div 
-                        onClick={() => updatePartField(p.id, 'edges-h', null)} 
-                        className="absolute top-0 left-0 right-0 h-4 cursor-pointer bg-transparent z-10" 
-                      />
-
-                      {/* BOTTOM EDGE button */}
-                      <button
-                        onClick={() => updatePartField(p.id, 'edges-v', null)}
-                        className={`absolute bottom-0 left-0 right-0 h-1.5 transition-all active:scale-95 cursor-pointer ${
-                          p.edges.v ? 'z-25 bg-blue-500 shadow-[0_-1px_6px_rgba(59,130,246,0.4)]' : 'z-20 bg-slate-200 hover:bg-slate-350 dark:bg-zinc-800 dark:hover:bg-zinc-700'
-                        }`}
-                        title="Unterkante polieren (Vorne / Sichtkante)"
-                      />
-                      {/* BOTTOM Hitbox overlay */}
-                      <div 
-                        onClick={() => updatePartField(p.id, 'edges-v', null)} 
-                        className="absolute bottom-0 left-0 right-0 h-4 cursor-pointer bg-transparent z-10" 
-                      />
-
-                      {/* LEFT EDGE button */}
-                      <button
-                        onClick={() => updatePartField(p.id, 'edges-l', null)}
-                        className={`absolute top-0 bottom-0 left-0 w-1.5 transition-all active:scale-95 cursor-pointer ${
-                          p.edges.l ? 'z-25 bg-blue-500 shadow-[1px_0_6px_rgba(59,130,246,0.4)]' : 'z-20 bg-slate-200 hover:bg-slate-350 dark:bg-zinc-800 dark:hover:bg-zinc-700'
-                        }`}
-                        title="Linke Kante polieren"
-                      />
-                      {/* LEFT Hitbox overlay */}
-                      <div 
-                        onClick={() => updatePartField(p.id, 'edges-l', null)} 
-                        className="absolute top-0 bottom-0 left-0 w-4 cursor-pointer bg-transparent z-10" 
-                      />
-
-                      {/* RIGHT EDGE button */}
-                      <button
-                        onClick={() => updatePartField(p.id, 'edges-r', null)}
-                        className={`absolute top-0 bottom-0 right-0 w-1.5 transition-all active:scale-95 cursor-pointer ${
-                          p.edges.r ? 'z-25 bg-blue-500 shadow-[-1px_0_6px_rgba(59,130,246,0.4)]' : 'z-20 bg-slate-200 hover:bg-slate-350 dark:bg-zinc-800 dark:hover:bg-zinc-700'
-                        }`}
-                        title="Rechte Kante polieren"
-                      />
-                      {/* RIGHT Hitbox overlay */}
-                      <div 
-                        onClick={() => updatePartField(p.id, 'edges-r', null)} 
-                        className="absolute top-0 bottom-0 right-0 w-4 cursor-pointer bg-transparent z-10" 
-                      />
-
-                      {/* TOP ROW HEADER IN THE BOUNDARY BOX AREA */}
-                      <div className="absolute top-4 left-4 right-4 z-40 flex flex-col gap-3">
-                        {/* ROW 1: LEFT has m² and Lfm display, RIGHT has "Leeren" button */}
-                        <div className="flex items-center justify-between">
-                          {/* m² and Lfm display */}
-                          <div className="flex items-center gap-1.5 shrink-0 select-none">
-                            <span className="text-[10px] font-mono font-bold text-slate-500 dark:text-zinc-400 bg-slate-50 dark:bg-zinc-900 border border-slate-150 dark:border-zinc-800 px-2 py-0.5 rounded-md shrink-0">
-                              {sqm.toFixed(2).replace('.', ',')} m²
-                            </span>
-                            <span className="text-[10px] font-mono font-bold text-blue-555 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md shrink-0">
-                              {lfm.toFixed(2).replace('.', ',')} Lfm
-                            </span>
-                          </div>
-
-                          {/* "Leeren" Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updatePartField(p.id, 'l', '');
-                              updatePartField(p.id, 'w', '');
-                              updateMachiningValue(p.id, 'flush', 0);
-                              updateMachiningValue(p.id, 'under', 0);
-                              updateMachiningValue(p.id, 'top', 0);
-                              updateMachiningValue(p.id, 'notch', 0);
-                              updateMachiningValue(p.id, 'hole', 0);
-                              updateMachiningValue(p.id, 'care', 0);
-                            }}
-                            disabled={!hasAnyValue}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all border shadow-2xs select-none ${
-                              hasAnyValue
-                                ? 'text-red-500 hover:bg-red-500/10 border-red-500/20 bg-white dark:bg-zinc-900/95 dark:text-red-400 hover:scale-[1.03] active:scale-95 cursor-pointer font-black'
-                                : 'text-slate-300 dark:text-zinc-800 border-slate-100 dark:border-zinc-850 bg-transparent cursor-not-allowed opacity-35'
-                            }`}
-                            title="Alle Werte und Bearbeitungen dieser Platte zurücksetzen"
-                          >
-                            <RotateCcw className="w-2.5 h-2.5 shrink-0" />
-                            <span>Leeren</span>
-                          </button>
+                    {/* CENTER: Dimension Inputs */}
+                    <div className="flex justify-center items-center w-full z-30 my-1">
+                      <div className="flex items-center gap-2 bg-slate-50/90 dark:bg-zinc-900/95 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs">
+                        {/* Länge Input */}
+                        <div className="relative w-20">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={p.l}
+                            onChange={(e) => updatePartField(p.id, 'l', e.target.value)}
+                            className="bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 rounded-lg text-xs font-mono font-black text-center w-full py-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 dark:text-white"
+                            placeholder="Länge"
+                          />
+                          {p.l && (
+                            <span className="absolute right-1.5 text-[8.5px] font-mono text-slate-400 top-1/2 -translate-y-1/2 select-none">cm</span>
+                          )}
                         </div>
 
-                        {/* ROW 2: CENTERED input fields for length and width */}
-                        <div className="flex justify-center w-full">
-                          <div className="flex items-center gap-2 bg-slate-50/90 dark:bg-zinc-900/95 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-2xs">
-                            {/* Länge Input */}
-                            <div className="relative w-18">
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={p.l}
-                                onChange={(e) => updatePartField(p.id, 'l', e.target.value)}
-                                className="bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 rounded-lg text-xs font-mono font-black text-center w-full py-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 dark:text-white"
-                                placeholder="Länge"
-                              />
-                              {p.l && (
-                                <span className="absolute right-1 text-[8.5px] font-mono text-slate-400 top-1/2 -translate-y-1/2 select-none">cm</span>
-                              )}
-                            </div>
+                        <span className="text-slate-400 dark:text-zinc-600 font-extrabold text-xs select-none">×</span>
 
-                            <span className="text-slate-350 dark:text-zinc-700 font-extrabold text-xs select-none">×</span>
-
-                            {/* Tiefe Input */}
-                            <div className="relative w-18">
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={p.w}
-                                onChange={(e) => updatePartField(p.id, 'w', e.target.value)}
-                                className="bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 rounded-lg text-xs font-mono font-black text-center w-full py-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 dark:text-white"
-                                placeholder="Tiefe"
-                              />
-                              {p.w && (
-                                <span className="absolute right-1 text-[8.5px] font-mono text-slate-400 top-1/2 -translate-y-1/2 select-none">cm</span>
-                              )}
-                            </div>
-                          </div>
+                        {/* Tiefe Input */}
+                        <div className="relative w-20">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            value={p.w}
+                            onChange={(e) => updatePartField(p.id, 'w', e.target.value)}
+                            className="bg-white dark:bg-black border border-slate-200 dark:border-zinc-800 rounded-lg text-xs font-mono font-black text-center w-full py-1 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none text-slate-800 dark:text-white"
+                            placeholder="Tiefe"
+                          />
+                          {p.w && (
+                            <span className="absolute right-1.5 text-[8.5px] font-mono text-slate-400 top-1/2 -translate-y-1/2 select-none">cm</span>
+                          )}
                         </div>
                       </div>
-
-
-
                     </div>
                   </div>
                 );
@@ -941,8 +906,32 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             })}
           </div>
 
-          {/* GEHRUNG & KLEBEN (SYMMETRISCH ÜBER AUFMASS UND MONTAGE) */}
-          <div className="flex gap-3 mb-3.5 items-stretch">
+          {/* AUFMASS & MONTAGE */}
+          <div className="flex gap-3 mb-3.5">
+            <button
+              onClick={() => toggleService('measure')}
+              className={`flex-1 py-3 px-2 border rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
+                activeServices.measure
+                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
+                  : 'border-slate-700 text-slate-400 hover:bg-white/5'
+              }`}
+            >
+              Aufmaß
+            </button>
+            <button
+              onClick={() => toggleService('delivery')}
+              className={`flex-1 py-3 px-2 border rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
+                activeServices.delivery
+                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
+                  : 'border-slate-700 text-slate-400 hover:bg-white/5'
+              }`}
+            >
+              Montage
+            </button>
+          </div>
+
+          {/* GEHRUNG & KLEBEN */}
+          <div className="flex gap-3 mb-6 items-stretch">
             {/* Gehrung Input Element */}
             <div className="flex-1 flex flex-col justify-between p-2 rounded-xl border border-slate-800 text-[10px] font-bold uppercase bg-zinc-950/45 text-center">
               <span className="text-slate-500 font-extrabold block text-[8.5px] uppercase tracking-wider mb-1.5 select-none">Gehrung</span>
@@ -977,43 +966,39 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </button>
           </div>
 
-          <div className="flex gap-3 mb-6">
-            <button
-              onClick={() => toggleService('measure')}
-              className={`flex-1 py-3 px-2 border rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
-                activeServices.measure
-                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
-                  : 'border-slate-700 text-slate-400 hover:bg-white/5'
-              }`}
-            >
-              Aufmaß
-            </button>
-            <button
-              onClick={() => toggleService('delivery')}
-              className={`flex-1 py-3 px-2 border rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
-                activeServices.delivery
-                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
-                  : 'border-slate-700 text-slate-400 hover:bg-white/5'
-              }`}
-            >
-              Montage
-            </button>
+          {/* Side-by-Side: Einkaufspreis & Handling / Aufwand */}
+          <div className="grid grid-cols-2 gap-3 mb-2.5 pt-4 border-t border-white/5">
+            {/* Einkaufspreis (netto) */}
+            <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-center shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[72px]">
+              <p className="text-[8.5px] font-black text-slate-400 uppercase mb-1 tracking-wider leading-tight">Einkaufspreis (netto)</p>
+              <p className="text-base font-bold text-slate-200 font-mono tracking-tighter font-mono-tabular">
+                <AnimatedNumber value={res.ek} formatter={formatMoney} />
+              </p>
+            </div>
+
+            {/* Handling / Aufwand (netto) */}
+            <div className="p-3 bg-emerald-500/5 rounded-2xl border border-emerald-500/20 text-center shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[72px]">
+              <p className="text-[8.5px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-1 leading-tight relative">Handling / Aufwand (netto)</p>
+              <p className="text-base font-black text-emerald-500 dark:text-emerald-400 tracking-tighter font-mono-tabular relative">
+                <AnimatedNumber value={res.handling} formatter={formatMoney} />
+              </p>
+            </div>
           </div>
 
-          <div className="text-center mb-6 pt-4 border-t border-white/5">
-            <p className="text-[9px] font-black text-slate-600 uppercase mb-1 tracking-widest">Einkaufspreis (EK Netto)</p>
-            <p className="text-lg font-bold text-slate-400 font-mono tracking-tighter font-mono-tabular">
-              <AnimatedNumber value={res.ek} formatter={formatMoney} />
-            </p>
+          {/* Zeile darunter / über Endpreis: + 19 % MwSt. */}
+          <div className="flex justify-between items-center px-3.5 py-2 mb-3.5 bg-slate-900/50 rounded-xl border border-slate-800/80">
+            <span className="text-slate-400 font-medium text-[11px] select-none">+ 19 % MwSt.</span>
+            <span className="font-mono font-bold text-slate-300 text-[11px] font-mono-tabular">
+              <AnimatedNumber value={res.vkTax} formatter={formatMoney} />
+            </span>
           </div>
 
           <div className="p-6 bg-white/5 rounded-2xl border border-blue-600/30 text-center shadow-inner relative overflow-hidden mb-4">
             <div className="absolute inset-0 bg-blue-500/5" />
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 relative">Verkaufspreis (VK Brutto)</p>
+            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 relative">Endpreis</p>
             <p className="text-4xl font-black text-blue-500 tracking-tighter font-mono-tabular relative">
               <AnimatedNumber value={res.vk} formatter={formatMoney} />
             </p>
-            <p className="text-[8px] text-slate-500 mt-2 italic relative">*Kalkuliert mit aktuellem Faktor</p>
           </div>
 
           <button
@@ -1056,7 +1041,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
           <div className="flex justify-between items-center max-w-4xl mx-auto px-2">
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Zusammenfassung</p>
-              <p className="text-[8px] text-slate-400 italic">VK Brutto</p>
+              <p className="text-[8px] text-slate-400 italic">Endpreis</p>
             </div>
             <div className="flex items-center gap-3">
               <p className="text-2xl font-black text-blue-500 tracking-tighter font-mono-tabular">
@@ -1146,8 +1131,32 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             })}
           </div>
 
-          {/* GEHRUNG & KLEBEN (SYMMETRISCH ÜBER AUFMASS UND MONTAGE) */}
-          <div className="flex gap-3 mb-3.5 items-stretch">
+          {/* AUFMASS & MONTAGE */}
+          <div className="flex gap-3 mb-3.5">
+            <button
+              onClick={() => toggleService('measure')}
+              className={`flex-1 py-3 px-2 border rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
+                activeServices.measure
+                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
+                  : 'border-slate-700 text-slate-400 hover:bg-white/5'
+              }`}
+            >
+              Aufmaß
+            </button>
+            <button
+              onClick={() => toggleService('delivery')}
+              className={`flex-1 py-3 px-2 border rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
+                activeServices.delivery
+                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
+                  : 'border-slate-700 text-slate-400 hover:bg-white/5'
+              }`}
+            >
+              Montage
+            </button>
+          </div>
+
+          {/* GEHRUNG & KLEBEN */}
+          <div className="flex gap-3 mb-6 items-stretch">
             {/* Gehrung Input Element */}
             <div className="flex-1 flex flex-col justify-between p-2 rounded-xl border border-slate-800 text-[10px] font-bold uppercase bg-zinc-950/45 text-center">
               <span className="text-slate-555 font-extrabold block text-[8.5px] uppercase tracking-wider mb-1.5 select-none">Gehrung</span>
@@ -1182,43 +1191,39 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </button>
           </div>
 
-          <div className="flex gap-3 mb-6">
-            <button
-              onClick={() => toggleService('measure')}
-              className={`flex-1 py-3 px-2 border rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
-                activeServices.measure
-                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
-                  : 'border-slate-700 text-slate-400 hover:bg-white/5'
-              }`}
-            >
-              Aufmaß
-            </button>
-            <button
-              onClick={() => toggleService('delivery')}
-              className={`flex-1 py-3 px-2 border rounded-xl text-[10px] font-bold uppercase transition-all active:scale-95 ${
-                activeServices.delivery
-                  ? 'border-blue-500 text-blue-500 bg-blue-500/10'
-                  : 'border-slate-700 text-slate-400 hover:bg-white/5'
-              }`}
-            >
-              Montage
-            </button>
+          {/* Side-by-Side: Einkaufspreis & Handling / Aufwand */}
+          <div className="grid grid-cols-2 gap-3 mb-2.5 pt-4 border-t border-white/5">
+            {/* Einkaufspreis (netto) */}
+            <div className="p-3 bg-white/5 rounded-2xl border border-white/10 text-center shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[72px]">
+              <p className="text-[8.5px] font-black text-slate-400 uppercase mb-1 tracking-wider leading-tight">Einkaufspreis (netto)</p>
+              <p className="text-base font-bold text-slate-200 font-mono tracking-tighter font-mono-tabular">
+                <AnimatedNumber value={res.ek} formatter={formatMoney} />
+              </p>
+            </div>
+
+            {/* Handling / Aufwand (netto) */}
+            <div className="p-3 bg-emerald-500/5 rounded-2xl border border-emerald-500/20 text-center shadow-inner relative overflow-hidden flex flex-col justify-center min-h-[72px]">
+              <p className="text-[8.5px] font-black text-emerald-500 dark:text-emerald-400 uppercase tracking-wider mb-1 leading-tight relative">Handling / Aufwand (netto)</p>
+              <p className="text-base font-black text-emerald-500 dark:text-emerald-400 tracking-tighter font-mono-tabular relative">
+                <AnimatedNumber value={res.handling} formatter={formatMoney} />
+              </p>
+            </div>
           </div>
 
-          <div className="text-center mb-6 pt-4 border-t border-white/5">
-            <p className="text-[9px] font-black text-slate-600 uppercase mb-1 tracking-widest">Einkaufspreis (EK Netto)</p>
-            <p className="text-lg font-bold text-slate-400 font-mono tracking-tighter font-mono-tabular">
-              <AnimatedNumber value={res.ek} formatter={formatMoney} />
-            </p>
+          {/* Zeile darunter / über Endpreis: + 19 % MwSt. */}
+          <div className="flex justify-between items-center px-3.5 py-2 mb-3.5 bg-slate-900/50 rounded-xl border border-slate-800/80">
+            <span className="text-slate-400 font-medium text-[11px] select-none">+ 19 % MwSt.</span>
+            <span className="font-mono font-bold text-slate-300 text-[11px] font-mono-tabular">
+              <AnimatedNumber value={res.vkTax} formatter={formatMoney} />
+            </span>
           </div>
 
           <div className="p-6 bg-white/5 rounded-2xl border border-blue-600/30 text-center shadow-inner relative overflow-hidden mb-6">
             <div className="absolute inset-0 bg-blue-500/5" />
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 relative">Verkaufspreis (VK Brutto)</p>
+            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2 relative">Endpreis</p>
             <p className="text-4xl font-black text-blue-500 tracking-tighter font-mono-tabular relative font-mono">
               <AnimatedNumber value={res.vk} formatter={formatMoney} />
             </p>
-            <p className="text-[8px] text-slate-500 mt-2 italic relative">*Kalkuliert mit aktuellem Faktor</p>
           </div>
 
           <button

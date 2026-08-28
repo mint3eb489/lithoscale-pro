@@ -100,10 +100,17 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
         
         <div className="p-3 md:p-4 bg-white dark:bg-[#121212] relative z-10 flex flex-col justify-between">
           <div>
-            <p className="font-bold text-xs md:text-sm truncate text-slate-800 dark:text-slate-200" title={s.name}>
-              {s.name}
-            </p>
-            <p className="text-[10px] md:text-xs font-mono font-bold text-slate-500 mt-1">
+            <div className="flex items-center justify-between gap-1.5 mb-1">
+              <p className="font-bold text-xs md:text-sm truncate text-slate-800 dark:text-slate-200 flex-1" title={s.name}>
+                {s.name}
+              </p>
+              <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase tracking-wider shrink-0 ${
+                s.isDekton ? 'bg-red-500 text-white' : 'bg-emerald-500 text-white'
+              }`}>
+                {s.isDekton ? 'Dekton' : 'Naturstein'}
+              </span>
+            </div>
+            <p className="text-[10px] md:text-xs font-mono font-bold text-slate-500">
               {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(s.price)} / m²
             </p>
           </div>
@@ -118,26 +125,40 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
   const activeStats = personalStats || config.stats || { dekton: [], natur: [] };
 
   return (
-    <div id="tab-gallery" className="pb-20 space-y-10 relative">
-      <div className="grid grid-cols-2 gap-4 md:gap-6 mt-2">
-        <div className="bg-white dark:bg-[#121212] p-4 rounded-2xl border border-slate-200 dark:border-[#262626] flex flex-col justify-center text-center">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Ø Markttrend Dekton</p>
-          <p id="trend-dekton" className="text-lg md:text-xl font-black text-slate-700 dark:text-slate-200 font-mono">
+    <div id="tab-gallery" className="pb-20 space-y-6 sm:space-y-10 relative">
+      {/* Markttrends: Sehr kompakte, schlanke Ansicht auf Mobile mit Dekton & Naturstein Badges */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-6 mt-1">
+        {/* Trend Card 1: Dekton */}
+        <div className="bg-white dark:bg-[#121212] px-3 py-2 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-[#262626] flex sm:flex-col items-center sm:items-stretch justify-between sm:justify-center text-left sm:text-center shadow-xs">
+          <div className="flex items-center sm:justify-center">
+            <span className="px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-widest bg-red-500 text-white shadow-xs">
+              Dekton
+            </span>
+          </div>
+          <p id="trend-dekton" className="text-xs sm:text-xl font-black text-slate-800 dark:text-slate-100 font-mono tracking-tight">
             {formatTrend(activeStats.dekton || [])}
           </p>
         </div>
-        <div className="bg-white dark:bg-[#121212] p-4 rounded-2xl border border-slate-200 dark:border-[#262626] flex flex-col justify-center text-center">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Ø Markttrend Naturstein</p>
-          <p id="trend-natur" className="text-lg md:text-xl font-black text-slate-700 dark:text-slate-200 font-mono">
+
+        {/* Trend Card 2: Naturstein */}
+        <div className="bg-white dark:bg-[#121212] px-3 py-2 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-[#262626] flex sm:flex-col items-center sm:items-stretch justify-between sm:justify-center text-left sm:text-center shadow-xs">
+          <div className="flex items-center sm:justify-center">
+            <span className="px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-widest bg-emerald-500 text-white shadow-xs">
+              Naturstein
+            </span>
+          </div>
+          <p id="trend-natur" className="text-xs sm:text-xl font-black text-slate-800 dark:text-slate-100 font-mono tracking-tight">
             {formatTrend(activeStats.natur || [])}
           </p>
         </div>
       </div>
 
       <div>
-        <h2 className="text-xl font-black mb-6 flex items-center gap-3 tracking-tight text-slate-900 dark:text-white">
-          <span className="w-3.5 h-3.5 rounded-full bg-red-500 shadow-lg shadow-red-500/40"></span> Dekton
-        </h2>
+        <div className="mb-6 flex items-center">
+          <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-red-500 text-white shadow-xs">
+            Dekton
+          </span>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {dektonStones.length > 0 ? (
             dektonStones.map(renderCard)
@@ -148,9 +169,11 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
       </div>
 
       <div>
-        <h2 className="text-xl font-black mb-6 flex items-center gap-3 tracking-tight mt-12 border-t border-slate-200 dark:border-darkBorder pt-10 text-slate-900 dark:text-white">
-          <span className="w-3.5 h-3.5 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/40"></span> Naturstein
-        </h2>
+        <div className="mb-6 flex items-center mt-12 border-t border-slate-200 dark:border-darkBorder pt-10">
+          <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-emerald-500 text-white shadow-xs">
+            Naturstein
+          </span>
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {naturStones.length > 0 ? (
             naturStones.map(renderCard)

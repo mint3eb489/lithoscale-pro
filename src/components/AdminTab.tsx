@@ -1824,7 +1824,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
                     }`}
                   >
-                    Natur ({stones.filter(s => !(s.isDekton === true || s.isDekton === 'true')).length})
+                    Naturstein ({stones.filter(s => !(s.isDekton === true || s.isDekton === 'true')).length})
                   </button>
                   <button
                     onClick={() => setStoneFilter('dekton')}
@@ -1916,11 +1916,11 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                               
                               <button
                                 onClick={() => onUpdateStone(s.id, 'isDekton', !s.isDekton)}
-                                className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase transition-all w-16 shrink-0 active:scale-95 text-white ${
+                                className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase transition-all w-20 shrink-0 active:scale-95 text-white ${
                                   (s.isDekton === true || s.isDekton === 'true') ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'
                                 }`}
                               >
-                                {(s.isDekton === true || s.isDekton === 'true') ? 'Dekton' : 'Natur'}
+                                {(s.isDekton === true || s.isDekton === 'true') ? 'Dekton' : 'Naturstein'}
                               </button>
                               
                               <button
