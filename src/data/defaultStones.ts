@@ -28,5 +28,9 @@ export const DEFAULT_STONES: Omit<Stone, "id">[] = [
   { name: "Nacre PG1", price: 495, isDekton: true, image: "" },
   { name: "Taj Mahal poliert Südamerika", price: 495, isDekton: false, image: "" },
   { name: "Arga Stonika PG4", price: 750, isDekton: true, image: "" },
-  { name: "Nero Assoluto", price: 245, isDekton: false, image: "" }
+  { name: "Nero Assoluto", price: 245, isDekton: false, image: "" },
+  { name: "Neolith Calacatta Silk", price: 580, isDekton: false, isNeolith: true, materialType: "neolith", image: "" },
+  { name: "Neolith Abu Dhabi White Silk", price: 520, isDekton: false, isNeolith: true, materialType: "neolith", image: "" },
+  { name: "Neolith Nero Marquina", price: 610, isDekton: false, isNeolith: true, materialType: "neolith", image: "" },
+  { name: "Neolith Pietra di Luna", price: 440, isDekton: false, isNeolith: true, materialType: "neolith", image: "" }
 ];

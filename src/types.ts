@@ -2,12 +2,34 @@
  * LithoScale PRO - Data Models & Default Values
  */
 
+export type StoneMaterialType = 'natur' | 'dekton' | 'neolith';
+
 export interface Stone {
   id: string;
   name: string;
   price: number;
   isDekton: boolean;
+  isNeolith?: boolean;
+  materialType?: StoneMaterialType;
   image: string;
+}
+
+export function getStoneMaterial(stone: Stone | null | undefined): StoneMaterialType {
+  if (!stone) return 'natur';
+  if (stone.materialType === 'neolith' || stone.isNeolith === true || (stone as any).isNeolith === 'true') {
+    return 'neolith';
+  }
+  if (stone.materialType === 'dekton' || stone.isDekton === true || (stone as any).isDekton === 'true') {
+    return 'dekton';
+  }
+  return 'natur';
+}
+
+export function getStoneMaterialLabel(stone: Stone | null | undefined): string {
+  const mat = getStoneMaterial(stone);
+  if (mat === 'neolith') return 'Neolith';
+  if (mat === 'dekton') return 'Dekton';
+  return 'Naturstein';
 }
 
 export interface Berater {
@@ -24,17 +46,23 @@ export interface AppConfig {
   gluing: number;
   natEdge: number;
   dekEdge: number;
+  neoEdge?: number;
   natCutUnder: number;
   natCutFlush: number;
   natCutTop: number;
   dekCutUnder: number;
   dekCutFlush: number;
   dekCutTop: number;
+  neoCutUnder?: number;
+  neoCutFlush?: number;
+  neoCutTop?: number;
   notch: number;
   natNotch: number;
   dekNotch: number;
+  neoNotch?: number;
   natPflegeset: number;
   dekReinigungsmittel: number;
+  neoReinigungsmittel?: number;
   hole: number;
   miter: number;
   moebelFactor: number;
@@ -176,6 +204,8 @@ export interface SavedCalculation {
   stoneId: string;
   stoneName: string;
   isDekton: boolean;
+  isNeolith?: boolean;
+  materialType?: StoneMaterialType;
   parts: Part[];
   miterInput: string;
   gluingCheck: boolean;
@@ -215,7 +245,11 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
     { name: "Nacre PG1", price: 495, isDekton: true, image: "" },
     { name: "Taj Mahal poliert Südamerika", price: 495, isDekton: false, image: "" },
     { name: "Arga Stonika PG4", price: 750, isDekton: true, image: "" },
-    { name: "Nero Assoluto", price: 245, isDekton: false, image: "" }
+    { name: "Nero Assoluto", price: 245, isDekton: false, image: "" },
+    { name: "Neolith Calacatta Silk", price: 580, isDekton: false, isNeolith: true, materialType: "neolith", image: "" },
+    { name: "Neolith Abu Dhabi White Silk", price: 520, isDekton: false, isNeolith: true, materialType: "neolith", image: "" },
+    { name: "Neolith Nero Marquina", price: 610, isDekton: false, isNeolith: true, materialType: "neolith", image: "" },
+    { name: "Neolith Pietra di Luna", price: 440, isDekton: false, isNeolith: true, materialType: "neolith", image: "" }
   ],
   config: {
     factor: 1.5,
@@ -224,17 +258,23 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
     gluing: 250,
     natEdge: 15,
     dekEdge: 20,
+    neoEdge: 20,
     natCutUnder: 137,
     natCutFlush: 137,
     natCutTop: 85,
     dekCutUnder: 177,
     dekCutFlush: 177,
     dekCutTop: 85,
+    neoCutUnder: 177,
+    neoCutFlush: 177,
+    neoCutTop: 85,
     notch: 45,
     natNotch: 45,
     dekNotch: 45,
+    neoNotch: 45,
     natPflegeset: 45,
     dekReinigungsmittel: 45,
+    neoReinigungsmittel: 45,
     hole: 25,
     miter: 45,
     moebelFactor: 2.0,
@@ -286,5 +326,46 @@ export function getBlancoChoiceArticleList(cfg?: Partial<AppConfig>): string[] {
   });
 
   return unique.length > 0 ? unique : ['527656', '527660'];
+}
+
+export function getMaterialRates(s: Stone | undefined, config: AppConfig) {
+  const mat = getStoneMaterial(s);
+  if (mat === 'neolith') {
+    return {
+      material: 'neolith' as const,
+      materialLabel: 'Neolith',
+      edgeRate: config.neoEdge ?? config.dekEdge ?? 20,
+      rateFlush: config.neoCutFlush ?? config.dekCutFlush ?? 177,
+      rateUnder: config.neoCutUnder ?? config.dekCutUnder ?? 177,
+      rateTop: config.neoCutTop ?? config.dekCutTop ?? 85,
+      rateNotch: config.neoNotch ?? config.dekNotch ?? config.notch ?? 45,
+      rateCare: config.neoReinigungsmittel ?? config.dekReinigungsmittel ?? 45,
+      isCareCleaner: true,
+    };
+  }
+  if (mat === 'dekton') {
+    return {
+      material: 'dekton' as const,
+      materialLabel: 'Dekton',
+      edgeRate: config.dekEdge ?? 20,
+      rateFlush: config.dekCutFlush ?? 177,
+      rateUnder: config.dekCutUnder ?? 177,
+      rateTop: config.dekCutTop ?? 85,
+      rateNotch: config.dekNotch ?? config.notch ?? 45,
+      rateCare: config.dekReinigungsmittel ?? 45,
+      isCareCleaner: true,
+    };
+  }
+  return {
+    material: 'natur' as const,
+    materialLabel: 'Naturstein',
+    edgeRate: config.natEdge ?? 15,
+    rateFlush: config.natCutFlush ?? 137,
+    rateUnder: config.natCutUnder ?? 137,
+    rateTop: config.natCutTop ?? 85,
+    rateNotch: config.natNotch ?? config.notch ?? 45,
+    rateCare: config.natPflegeset ?? 45,
+    isCareCleaner: false,
+  };
 }
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db, internalAppId, handleFirestoreError, OperationType } from './firebase';
-import { Stone, AppConfig, Part, Kitchen, KitchenVersionOption, Offer, DEFAULTS, UserProfile, SavedCalculation, getBlancoChoiceArticleList } from './types';
+import { Stone, AppConfig, Part, Kitchen, KitchenVersionOption, Offer, DEFAULTS, UserProfile, SavedCalculation, getBlancoChoiceArticleList, getMaterialRates, getStoneMaterial, StoneMaterialType } from './types';
 import { DEFAULT_STONES } from './data/defaultStones';
 import { Navigation } from './components/Navigation';
 import { CalculatorTab } from './components/CalculatorTab';
@@ -15,6 +15,18 @@ import { Cloud, Check, ShieldAlert, KeyRound, Search, X, Folder, FolderOpen, Plu
 
 const generateId = () => 'st_' + Math.random().toString(36).substr(2, 9);
 
+const ensureUniqueStoneIds = (list: Stone[]): Stone[] => {
+  const seenIds = new Set<string>();
+  return list.map((s, idx) => {
+    let id = s.id ? String(s.id).trim() : `st-${Date.now()}-${idx}`;
+    if (!id || seenIds.has(id)) {
+      id = `${id || 'stone'}-${idx}-${Math.random().toString(36).substring(2, 7)}`;
+    }
+    seenIds.add(id);
+    return { ...s, id };
+  });
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<string>('calc');
   const [dark, setDark] = useState<boolean>(() => {
@@ -25,9 +37,14 @@ export default function App() {
   const [stones, setStones] = useState<Stone[]>(() => {
     try {
       const cached = localStorage.getItem('ls_stones');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return ensureUniqueStoneIds(parsed);
+        }
+      }
     } catch {}
-    return DEFAULT_STONES.map((s) => ({ ...s, id: generateId() }));
+    return ensureUniqueStoneIds(DEFAULT_STONES.map((s) => ({ ...s, id: generateId() })));
   });
 
   const [config, setConfig] = useState<AppConfig>(() => {
@@ -310,7 +327,7 @@ export default function App() {
       const unsub = onSnapshot(collRef, (snap) => {
         const list: UserProfile[] = [];
         snap.forEach((d) => {
-          list.push(d.data() as UserProfile);
+          list.push({ id: d.id, ...d.data() } as UserProfile);
         });
         setUsersList(list);
       }, (err) => {
@@ -329,7 +346,7 @@ export default function App() {
           const data = snap.data();
           let cloudStones = data.stones || [];
           if (cloudStones.length > 0) {
-            setStones(cloudStones);
+            setStones(ensureUniqueStoneIds(cloudStones));
           }
           if (data.config) {
             setConfig((prev) => ({ ...prev, ...data.config }));
@@ -435,7 +452,7 @@ export default function App() {
       (snap) => {
         const list: Offer[] = [];
         snap.forEach((doc) => {
-          list.push(doc.data() as Offer);
+          list.push({ id: doc.id, ...doc.data() } as Offer);
         });
         setOffersList(list);
       },
@@ -453,7 +470,7 @@ export default function App() {
       (snap) => {
         const list: SavedCalculation[] = [];
         snap.forEach((doc) => {
-          list.push(doc.data() as SavedCalculation);
+          list.push({ id: doc.id, ...doc.data() } as SavedCalculation);
         });
         setSavedCalculations(list);
         localStorage.setItem('ls_saved_calculations', JSON.stringify(list));
@@ -603,7 +620,7 @@ export default function App() {
 
   const factoryResetCloud = async () => {
     requestConfirm('Katalog zurücksetzen?', 'Möchtest du den Katalog und alle Konfigurationen wirklich auf Standardeinstellungen zurücksetzen?', async () => {
-      const cleanStones = DEFAULT_STONES.map((s) => ({ ...s, id: generateId() }));
+      const cleanStones = ensureUniqueStoneIds(DEFAULT_STONES.map((s) => ({ ...s, id: generateId() })));
       setStones(cleanStones);
       setConfig(DEFAULTS.config);
       showToast('Katalog zurückgesetzt. Klick UPLOAD CLOUD zum Sichern.');
@@ -643,7 +660,7 @@ export default function App() {
         throw new Error('Das Backup enthält keine gültigen Materialien.');
       }
       
-      setStones(importedStones);
+      setStones(ensureUniqueStoneIds(importedStones));
       if (importedConfig) {
         setConfig((prev) => ({ ...prev, ...importedConfig }));
       }
@@ -1023,11 +1040,13 @@ export default function App() {
     }
 
     // Direct calculation
-    const isDek = s.isDekton === true || s.isDekton === 'true';
-    const edgeRate = isDek ? config.dekEdge : config.natEdge;
-    const rateFlush = isDek ? config.dekCutFlush : config.natCutFlush;
-    const rateUnder = isDek ? config.dekCutUnder : config.natCutUnder;
-    const rateTop = isDek ? (config.dekCutTop || 0) : (config.natCutTop || 0);
+    const rates = getMaterialRates(s, config);
+    const edgeRate = rates.edgeRate;
+    const rateFlush = rates.rateFlush;
+    const rateUnder = rates.rateUnder;
+    const rateTop = rates.rateTop;
+    const rateNotch = rates.rateNotch;
+    const rateCare = rates.rateCare;
 
     let totalSqm = 0;
     let totalLfm = 0;
@@ -1048,9 +1067,6 @@ export default function App() {
     const sumMat = totalSqm * s.price;
     const sumEdge = totalLfm * edgeRate;
 
-    const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
-    const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
-
     const sumCut =
       flushCount * rateFlush +
       underCount * rateUnder +
@@ -1070,7 +1086,7 @@ export default function App() {
 
     setKitchen((prev) => ({
       ...prev,
-      apName: `${s.isDekton ? 'Dekton' : 'Naturstein'} ${s.name}`,
+      apName: `${rates.materialLabel} ${s.name}`,
       steinVK: vk.toFixed(2).replace('.', ','),
       steinEK: ek.toFixed(2).replace('.', ','),
     }));
@@ -1268,11 +1284,13 @@ export default function App() {
       return;
     }
 
-    const isDek = s.isDekton === true || s.isDekton === 'true';
-    const edgeRate = isDek ? config.dekEdge : config.natEdge;
-    const rateFlush = isDek ? config.dekCutFlush : config.natCutFlush;
-    const rateUnder = isDek ? config.dekCutUnder : config.natCutUnder;
-    const rateTop = isDek ? (config.dekCutTop || 0) : (config.natCutTop || 0);
+    const rates = getMaterialRates(s, config);
+    const edgeRate = rates.edgeRate;
+    const rateFlush = rates.rateFlush;
+    const rateUnder = rates.rateUnder;
+    const rateTop = rates.rateTop;
+    const rateNotch = rates.rateNotch;
+    const rateCare = rates.rateCare;
 
     let totalSqm = 0;
     let totalLfm = 0;
@@ -1292,9 +1310,6 @@ export default function App() {
 
     const sumMat = totalSqm * s.price;
     const sumEdge = totalLfm * edgeRate;
-
-    const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
-    const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
 
     const sumCut =
       flushCount * rateFlush +
@@ -1321,7 +1336,8 @@ export default function App() {
       name: name.trim(),
       stoneId: s.id,
       stoneName: s.name,
-      isDekton: isDek,
+      isDekton: rates.material === 'dekton',
+      materialType: rates.material,
       parts,
       miterInput,
       gluingCheck,
@@ -1402,9 +1418,10 @@ export default function App() {
   };
 
   const handleLoadCalculationIntoKitchen = (calc: SavedCalculation) => {
+    const matLabel = calc.materialType === 'neolith' ? 'Neolith' : (calc.isDekton ? 'Dekton' : 'Naturstein');
     setKitchen((prev) => ({
       ...prev,
-      apName: `${calc.isDekton ? 'Dekton' : 'Naturstein'} ${calc.stoneName}`,
+      apName: `${matLabel} ${calc.stoneName}`,
       steinEK: calc.ek.toFixed(2).replace('.', ','),
       steinVK: calc.vk.toFixed(2).replace('.', ','),
     }));
@@ -1859,8 +1876,8 @@ export default function App() {
   // 1. Extract folders and merge with customFolders
   const dbFolders = Array.from(new Set([
     ...customFolders,
-    ...visibleOffers.map(o => o.folder).filter(Boolean)
-  ])) as string[];
+    ...visibleOffers.map(o => (o.folder || '').trim()).filter(Boolean)
+  ])).filter((f): f is string => typeof f === 'string' && f.trim().length > 0 && f !== '__NEW__');
 
   // 2. Filter raw offers
   const filteredOffers = visibleOffers.filter((o) => {
@@ -1919,7 +1936,8 @@ export default function App() {
     return (b.latestOffer.timestamp || 0) - (a.latestOffer.timestamp || 0);
   });
 
-  const existingFolders = Array.from(new Set(visibleOffers.map(o => o.folder).filter(Boolean))) as string[];
+  const existingFolders = Array.from(new Set(visibleOffers.map(o => (o.folder || '').trim()).filter(Boolean)))
+    .filter((f): f is string => typeof f === 'string' && f.trim().length > 0 && f !== '__NEW__');
 
   return (
     <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans w-full max-w-full overflow-x-hidden">
@@ -2096,14 +2114,34 @@ export default function App() {
               stones={stones}
               config={config}
               onUpdateConfig={(key, val) => setConfig((prev) => ({ ...prev, [key]: val }))}
-              onAddStone={() => {
+              onAddStone={(customStone) => {
+                const newMat: StoneMaterialType = customStone?.materialType || 'natur';
                 setStones((prev) => [
                   ...prev,
-                  { id: generateId(), name: 'Neuer Stein...', price: 0, isDekton: false, image: '' },
+                  {
+                    id: generateId(),
+                    name: customStone?.name?.trim() || 'Neuer Stein...',
+                    price: typeof customStone?.price === 'number' ? customStone.price : 0,
+                    isDekton: newMat === 'dekton',
+                    isNeolith: newMat === 'neolith',
+                    materialType: newMat,
+                    image: customStone?.image?.trim() || '',
+                  },
                 ]);
               }}
               onUpdateStone={(id, field, val) => {
                 setStones((prev) => prev.map((s) => (s.id === id ? { ...s, [field]: val } : s)));
+              }}
+              onUpdateStoneMaterial={(id, mat) => {
+                setStones((prev) => prev.map((s) => {
+                  if (s.id !== id) return s;
+                  return {
+                    ...s,
+                    materialType: mat,
+                    isDekton: mat === 'dekton',
+                    isNeolith: mat === 'neolith',
+                  };
+                }));
               }}
               onDeleteStone={(id) => {
                 setStones((prev) => prev.filter((s) => s.id !== id));
@@ -2217,11 +2255,11 @@ export default function App() {
                     <div className="border-t border-slate-200 dark:border-darkBorder my-2" />
 
                     {/* 3. Custom Folders */}
-                    {dbFolders.map((folderName) => {
+                    {dbFolders.map((folderName, idx) => {
                       const count = visibleOffers.filter(o => o.folder === folderName).length;
                       return (
                         <div
-                          key={folderName}
+                          key={`dbfolder-tab-${folderName}-${idx}`}
                           className={`group flex items-center justify-between rounded-xl transition-all ${
                             activeFolderFilter === folderName
                               ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/20'
@@ -2274,8 +2312,8 @@ export default function App() {
                       >
                         <option value="all">📁 Alle Ordner ({visibleOffers.length})</option>
                         <option value="">📂 Ohne Ordner ({visibleOffers.filter(o => !o.folder).length})</option>
-                        {dbFolders.map(folderName => (
-                          <option key={folderName} value={folderName}>📁 {folderName} ({visibleOffers.filter(o => o.folder === folderName).length})</option>
+                        {dbFolders.map((folderName, idx) => (
+                          <option key={`dbfolder-filter-${folderName}-${idx}`} value={folderName}>📁 {folderName} ({visibleOffers.filter(o => o.folder === folderName).length})</option>
                         ))}
                       </select>
                     </div>
@@ -2307,9 +2345,14 @@ export default function App() {
                             rawList.push({ id: String(userProfile.id), name: userProfile.name });
                           }
                           const map = new Map<string, { id: string; name: string }>();
+                          const seenIds = new Set<string>();
                           rawList.forEach((u) => {
-                            const k = u.name.trim().toLowerCase();
-                            if (!map.has(k)) map.set(k, u);
+                            const nameKey = u.name.trim().toLowerCase();
+                            const idKey = String(u.id).trim();
+                            if (!map.has(nameKey) && !seenIds.has(idKey)) {
+                              map.set(nameKey, u);
+                              seenIds.add(idKey);
+                            }
                           });
                           return Array.from(map.values())
                             .sort((a, b) => {
@@ -2319,8 +2362,8 @@ export default function App() {
                               if (!aIsEnrico && bIsEnrico) return 1;
                               return a.name.localeCompare(b.name, 'de', { sensitivity: 'base' });
                             })
-                            .map((u) => (
-                              <option key={u.id} value={u.id}>
+                            .map((u, idx) => (
+                              <option key={`offer-berater-${u.id}-${idx}`} value={u.id}>
                                 {u.name}
                               </option>
                             ));
@@ -2346,7 +2389,7 @@ export default function App() {
                         <p className="text-xs text-slate-500 mt-1">Ändere den Filter oder erstelle eine neue Küchenkalkulation.</p>
                       </div>
                     ) : (
-                      sortedFamilies.map((fam) => {
+                      sortedFamilies.map((fam, famIdx) => {
                         const lat = fam.latestOffer;
                         const beraterName = resolveBeraterName(lat.kitchen?.beraterId || lat.beraterId, usersList, userProfile, config.beraterList);
                         const isExpanded = !!expandedFamilies[fam.familyId];
@@ -2354,7 +2397,7 @@ export default function App() {
 
                         return (
                           <div
-                            key={fam.familyId}
+                            key={`fam-${fam.familyId || famIdx}-${famIdx}`}
                             className="bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:border-blue-500/60"
                           >
                             {/* PRIMARY CARD ROW (LATEST VERSION) */}
@@ -2382,8 +2425,8 @@ export default function App() {
                                       title="Ordner zuweisen"
                                     >
                                       <option value="" className="text-slate-800 dark:text-black font-semibold bg-white dark:bg-zinc-900">(Kein Ordner)</option>
-                                      {dbFolders.map(folderName => (
-                                        <option key={folderName} value={folderName} className="text-slate-800 dark:text-black font-semibold bg-white dark:bg-zinc-900">{folderName}</option>
+                                      {dbFolders.map((folderName, fIdx) => (
+                                        <option key={`fam-folder-${fam.familyId}-${folderName}-${fIdx}`} value={folderName} className="text-slate-800 dark:text-black font-semibold bg-white dark:bg-zinc-900">{folderName}</option>
                                       ))}
                                       <option value="__NEW__" className="text-blue-500 dark:text-blue-400 font-bold bg-white dark:bg-zinc-900">+ Neuer Ordner...</option>
                                     </select>
@@ -2441,11 +2484,11 @@ export default function App() {
                             {/* COLLAPSIBLE VERSION HISTORY COMPLEMENT */}
                             {isExpanded && olderVersions.length > 0 && (
                               <div className="border-t border-slate-150 dark:border-zinc-900 bg-slate-50/50 dark:bg-black/25 px-4 py-3 divide-y divide-slate-100 dark:divide-zinc-900/40">
-                                {olderVersions.map((ver) => {
+                                {olderVersions.map((ver, verIdx) => {
                                   const verBeraterName = resolveBeraterName(ver.kitchen?.beraterId || ver.beraterId, usersList, userProfile, config.beraterList);
                                   return (
                                     <div
-                                      key={ver.id}
+                                      key={`ver-${ver.id || fam.familyId || verIdx}-${verIdx}`}
                                       className="py-2.5 flex items-center justify-between text-xs gap-4 hover:bg-slate-200/20 dark:hover:bg-white/5 px-2 rounded-xl transition-colors"
                                     >
                                       <div className="flex-1 min-w-0">
@@ -2541,8 +2584,8 @@ export default function App() {
                       className="w-full bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-xl px-4 py-2.5 text-sm outline-none focus:border-blue-500 text-slate-800 dark:text-white cursor-pointer"
                     >
                       <option value="">(Kein Ordner / Hauptverzeichnis)</option>
-                      {existingFolders.map((folderName) => (
-                        <option key={folderName} value={folderName}>{folderName}</option>
+                      {existingFolders.map((folderName, idx) => (
+                        <option key={`save-folder-${folderName}-${idx}`} value={folderName}>{folderName}</option>
                       ))}
                       <option value="__NEW__">+ Neuen Ordner erstellen...</option>
                     </select>
@@ -2654,11 +2697,13 @@ export default function App() {
                   if (!s) return null;
 
                   // recalc
-                  const isDek = s.isDekton === true || s.isDekton === 'true';
-                  const edgeRate = isDek ? config.dekEdge : config.natEdge;
-                  const rateFlush = isDek ? config.dekCutFlush : config.natCutFlush;
-                  const rateUnder = isDek ? config.dekCutUnder : config.natCutUnder;
-                  const rateTop = isDek ? (config.dekCutTop || 0) : (config.natCutTop || 0);
+                  const rates = getMaterialRates(s, config);
+                  const edgeRate = rates.edgeRate;
+                  const rateFlush = rates.rateFlush;
+                  const rateUnder = rates.rateUnder;
+                  const rateTop = rates.rateTop;
+                  const rateNotch = rates.rateNotch;
+                  const rateCare = rates.rateCare;
 
                   let totalSqm = 0;
                   let totalLfm = 0;
@@ -2678,9 +2723,6 @@ export default function App() {
                   const sumMat = totalSqm * s.price;
                   const sumEdge = totalLfm * edgeRate;
 
-                  const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
-                  const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
-
                   const sumCut =
                     flushCount * rateFlush +
                     underCount * rateUnder +
@@ -2697,9 +2739,11 @@ export default function App() {
 
                   const ek = sumMat + sumEdge + sumCut + sumExtra;
                   const vk = ek * config.factor;
+                  const mat = rates.material;
+                  const badgeColor = mat === 'neolith' ? 'bg-orange-500' : mat === 'dekton' ? 'bg-red-500' : 'bg-emerald-500';
 
                   return (
-                    <div key={id} className="flex-1 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 md:p-6 flex flex-col justify-between shadow-sm">
+                    <div key={`compare-col-${id || 'col'}-${index}`} className="flex-1 bg-slate-50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 md:p-6 flex flex-col justify-between shadow-sm">
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
                           {/* Compact Row Header */}
@@ -2710,11 +2754,11 @@ export default function App() {
                               ) : (
                                 <span className="text-[9px] text-slate-400 font-extrabold uppercase">Kein Bild</span>
                               )}
-                              <span className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full border border-white/20 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`} />
+                              <span className={`absolute top-1 right-1 w-2.5 h-2.5 rounded-full border border-white/20 ${badgeColor}`} />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-white mb-1 ${s.isDekton ? 'bg-red-500' : 'bg-emerald-500'}`}>
-                                {s.isDekton ? 'Dekton' : 'Naturstein'}
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest text-white mb-1 ${badgeColor}`}>
+                                {rates.materialLabel}
                               </span>
                               <h3 className="text-base md:text-lg font-black text-slate-900 dark:text-white truncate leading-tight" title={s.name}>
                                 {s.name}

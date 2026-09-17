@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Stone, AppConfig, Part, SavedCalculation } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Stone, AppConfig, Part, SavedCalculation, getStoneMaterial, getStoneMaterialLabel } from '../types';
 import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, ChevronDown, Search, Bookmark, Save, Trash2, Download, Cloud, TrendingUp } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
@@ -63,13 +63,53 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   onDeleteSavedCalculation,
   onLoadSavedCalculation,
 }) => {
-  const [activeFilter, setActiveFilter] = useState<'all' | 'natur' | 'dekton'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'natur' | 'dekton' | 'neolith'>('all');
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [editingMachiningPartId, setEditingMachiningPartId] = useState<number | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [showSavedCalcsDropdownInCalc, setShowSavedCalcsDropdownInCalc] = useState(false);
+  const dropdownContainerRef = useRef<HTMLDivElement>(null);
+  const [openUpwards, setOpenUpwards] = useState(false);
+  const [maxDropdownHeight, setMaxDropdownHeight] = useState<number>(320);
+
+  const updateDropdownPosition = () => {
+    if (dropdownContainerRef.current) {
+      const rect = dropdownContainerRef.current.getBoundingClientRect();
+      const isMobile = window.innerWidth < 1024;
+      const bottomSafeMargin = isMobile ? 96 : 24;
+      const spaceBelow = window.innerHeight - rect.bottom - bottomSafeMargin;
+      const spaceAbove = rect.top - 24;
+
+      if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+        setOpenUpwards(true);
+        setMaxDropdownHeight(Math.max(160, Math.min(380, Math.floor(spaceAbove))));
+      } else {
+        setOpenUpwards(false);
+        setMaxDropdownHeight(Math.max(160, Math.min(380, Math.floor(spaceBelow))));
+      }
+    }
+  };
+
+  const toggleDropdown = () => {
+    if (!dropdownOpen) {
+      updateDropdownPosition();
+    }
+    setDropdownOpen((prev) => !prev);
+  };
+
+  useEffect(() => {
+    if (dropdownOpen) {
+      updateDropdownPosition();
+      window.addEventListener('resize', updateDropdownPosition);
+      window.addEventListener('scroll', updateDropdownPosition, true);
+      return () => {
+        window.removeEventListener('resize', updateDropdownPosition);
+        window.removeEventListener('scroll', updateDropdownPosition, true);
+      };
+    }
+  }, [dropdownOpen]);
 
   useEffect(() => {
     const handleFocusChange = () => {
@@ -155,17 +195,39 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   const sortedStones = [...stones].sort((a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
   
   const selectedStone = stones.find((s) => s.id === selectedStoneId) || stones[0] || null;
-  const isDek = selectedStone ? (selectedStone.isDekton === true || selectedStone.isDekton === 'true') : false;
+  const stoneMaterial = getStoneMaterial(selectedStone);
+  const isDek = stoneMaterial === 'dekton';
+  const isNeo = stoneMaterial === 'neolith';
+  const isCareCleaner = isDek || isNeo;
 
   // Real-time calculation helper
   const calculateResult = () => {
     if (!selectedStone) return { totalSqm: 0, totalLfm: 0, sumMat: 0, sumEdge: 0, sumCut: 0, sumExtra: 0, ek: 0, vk: 0 };
     
-    const isDek = selectedStone.isDekton === true || selectedStone.isDekton === 'true';
-    const edgeRate = isDek ? config.dekEdge : config.natEdge;
-    const rateFlush = isDek ? config.dekCutFlush : config.natCutFlush;
-    const rateUnder = isDek ? config.dekCutUnder : config.natCutUnder;
-    const rateTop = isDek ? (config.dekCutTop || 0) : (config.natCutTop || 0);
+    const mat = getStoneMaterial(selectedStone);
+    const edgeRate = mat === 'dekton'
+      ? config.dekEdge
+      : mat === 'neolith'
+        ? (config.neoEdge ?? config.dekEdge ?? 20)
+        : config.natEdge;
+
+    const rateFlush = mat === 'dekton'
+      ? config.dekCutFlush
+      : mat === 'neolith'
+        ? (config.neoCutFlush ?? config.dekCutFlush ?? 177)
+        : config.natCutFlush;
+
+    const rateUnder = mat === 'dekton'
+      ? config.dekCutUnder
+      : mat === 'neolith'
+        ? (config.neoCutUnder ?? config.dekCutUnder ?? 177)
+        : config.natCutUnder;
+
+    const rateTop = mat === 'dekton'
+      ? (config.dekCutTop || 0)
+      : mat === 'neolith'
+        ? (config.neoCutTop ?? config.dekCutTop ?? 85)
+        : (config.natCutTop || 0);
 
     let totalSqm = 0;
     let totalLfm = 0;
@@ -186,8 +248,17 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
     const sumMat = totalSqm * selectedStone.price;
     const sumEdge = totalLfm * edgeRate;
 
-    const rateNotch = isDek ? (config.dekNotch ?? config.notch ?? 0) : (config.natNotch ?? config.notch ?? 0);
-    const rateCare = isDek ? (config.dekReinigungsmittel ?? 0) : (config.natPflegeset ?? 0);
+    const rateNotch = mat === 'dekton'
+      ? (config.dekNotch ?? config.notch ?? 0)
+      : mat === 'neolith'
+        ? (config.neoNotch ?? config.dekNotch ?? config.notch ?? 0)
+        : (config.natNotch ?? config.notch ?? 0);
+
+    const rateCare = mat === 'dekton'
+      ? (config.dekReinigungsmittel ?? 0)
+      : mat === 'neolith'
+        ? (config.neoReinigungsmittel ?? config.dekReinigungsmittel ?? 0)
+        : (config.natPflegeset ?? 0);
 
     const sumCut =
       flushCount * rateFlush +
@@ -245,7 +316,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
     setParts((prev) => [
       ...prev,
       {
-        id: Date.now(),
+        id: Date.now() + Math.floor(Math.random() * 100000),
         name: '',
         l: '',
         w: '',
@@ -310,8 +381,10 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   };
 
   const filteredStones = sortedStones.filter((s) => {
-    if (activeFilter === 'dekton' && !s.isDekton) return false;
-    if (activeFilter === 'natur' && s.isDekton) return false;
+    const mat = getStoneMaterial(s);
+    if (activeFilter === 'dekton' && mat !== 'dekton') return false;
+    if (activeFilter === 'neolith' && mat !== 'neolith') return false;
+    if (activeFilter === 'natur' && mat !== 'natur') return false;
     return true;
   });
 
@@ -328,10 +401,12 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
   return (
     <div id="tab-calc" className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start pb-36 lg:pb-0">
       <div className="lg:col-span-3 space-y-5">
-        <div className="card p-6 relative overflow-hidden group/card hover:border-blue-500/30 transition-all duration-300">
+        <div className="card card-tooltip-friendly overflow-visible !overflow-visible p-6 relative group/card hover:border-blue-500/30 transition-all duration-300 no-glow">
           
           {/* Der Glow-Hintergrundkreis */}
-          <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full pointer-events-none opacity-60 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/15 dark:bg-blue-400/15 blur-3xl z-0" />
+          <div className="absolute inset-0 rounded-[inherit] overflow-hidden pointer-events-none z-0">
+            <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full opacity-60 sm:opacity-0 sm:group-hover/card:opacity-100 transition-opacity duration-500 bg-blue-500/15 dark:bg-blue-400/15 blur-3xl" />
+          </div>
 
           <div className="relative z-10">
             <div className="flex justify-between items-center mb-5 border-b border-slate-200 dark:border-darkBorder pb-3 relative">
@@ -366,95 +441,12 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </div>
 
             <div className="flex-1 flex flex-col justify-center">
-              <div className="flex justify-between items-center mb-2 ml-1">
-                <div className="flex items-center gap-1.5">
-                  {onSaveCalculation && (
-                    <button
-                      onClick={onSaveCalculation}
-                      type="button"
-                      className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20 active:scale-90 transition-all cursor-pointer"
-                      title="Kalkulation speichern"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  {onLoadSavedCalculation && (
-                    <div className="relative" id="saved-calcs-dropdown-container-calc">
-                      <button
-                        onClick={() => setShowSavedCalcsDropdownInCalc(!showSavedCalcsDropdownInCalc)}
-                        type="button"
-                        className="p-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/20 active:scale-90 transition-all cursor-pointer"
-                        title="Gespeicherte Kalkulation laden"
-                      >
-                        <Cloud className="w-3.5 h-3.5" />
-                      </button>
-
-                      {showSavedCalcsDropdownInCalc && (
-                        <div className="absolute left-0 top-full mt-2 w-64 bg-white dark:bg-[#161616] border border-slate-200 dark:border-darkBorder rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
-                          <div className="px-3 py-1.5 text-[8.5px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-darkBorder mb-1 flex justify-between items-center">
-                            <span>Kalkulation laden</span>
-                            <button
-                              type="button"
-                              onClick={() => setShowSavedCalcsDropdownInCalc(false)}
-                              className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 p-0.5 rounded transition-colors cursor-pointer"
-                              title="Schließen"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                          <div className="max-h-48 overflow-y-auto">
-                            {savedCalculations.length === 0 ? (
-                              <div className="px-3 py-3 text-xs text-slate-450 dark:text-slate-500 text-center italic">
-                                Keine gespeicherten Kalkulationen
-                              </div>
-                            ) : (
-                              savedCalculations.map((calc) => (
-                                <div key={calc.id} className="w-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex items-center justify-between px-3 py-2 group">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      onLoadSavedCalculation(calc);
-                                      setShowSavedCalcsDropdownInCalc(false);
-                                    }}
-                                    className="flex-1 text-left flex flex-col gap-0.5 min-w-0 mr-2"
-                                  >
-                                    <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                                      {calc.name}
-                                    </div>
-                                    <div className="flex justify-between items-center text-[9px] text-slate-450 dark:text-slate-500 font-mono w-full">
-                                      <span className="truncate max-w-[120px]">
-                                        {calc.stoneName}
-                                      </span>
-                                      <span className="text-blue-500 font-bold shrink-0">
-                                        {formatMoney(calc.vk)}
-                                      </span>
-                                    </div>
-                                  </button>
-                                  {onDeleteSavedCalculation && (
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        onDeleteSavedCalculation(calc.id, calc.name);
-                                      }}
-                                      className="text-red-500 hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/20 p-1 rounded-lg active:scale-95 transition-all shrink-0 opacity-60 hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                                      title="Kalkulation pflegen"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
-                                </div>
-                              ))
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-1.5">
+              <div className="flex justify-end items-center mb-2">
+                <div className="flex items-center gap-1 sm:gap-1.5">
                   <button
                     onClick={() => setActiveFilter('all')}
-                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border transition-all uppercase ${
+                    type="button"
+                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border transition-all uppercase whitespace-nowrap cursor-pointer ${
                       activeFilter === 'all'
                         ? 'bg-slate-600 border-slate-700 text-white shadow-sm'
                         : 'bg-transparent border-slate-200 dark:border-darkBorder text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -464,7 +456,8 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                   </button>
                   <button
                     onClick={() => setActiveFilter('natur')}
-                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border transition-all uppercase ${
+                    type="button"
+                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border transition-all uppercase whitespace-nowrap cursor-pointer ${
                       activeFilter === 'natur'
                         ? 'bg-emerald-600 border-emerald-700 text-white shadow-sm'
                         : 'bg-transparent border-emerald-500 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10'
@@ -474,7 +467,8 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                   </button>
                   <button
                     onClick={() => setActiveFilter('dekton')}
-                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border transition-all uppercase ${
+                    type="button"
+                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border transition-all uppercase whitespace-nowrap cursor-pointer ${
                       activeFilter === 'dekton'
                         ? 'bg-red-600 border-red-700 text-white shadow-sm'
                         : 'bg-transparent border-red-500 dark:border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10'
@@ -482,13 +476,28 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                   >
                     Dekton
                   </button>
+                  <button
+                    onClick={() => setActiveFilter('neolith')}
+                    type="button"
+                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-md border transition-all uppercase whitespace-nowrap cursor-pointer ${
+                      activeFilter === 'neolith'
+                        ? 'bg-orange-600 border-orange-700 text-white shadow-sm'
+                        : 'bg-transparent border-orange-500 dark:border-orange-500/30 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-500/10'
+                    }`}
+                  >
+                    Neolith
+                  </button>
                 </div>
               </div>
-              <div id="custom-stone-dropdown-container" className="relative w-full">
+              <div 
+                id="custom-stone-dropdown-container" 
+                ref={dropdownContainerRef}
+                className={`relative w-full ${dropdownOpen ? 'z-50' : 'z-20'}`}
+              >
                 {/* Trigger Button */}
                 <button
                   type="button"
-                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  onClick={toggleDropdown}
                   className="w-full flex items-center justify-between bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder hover:border-slate-300 dark:hover:border-slate-700 rounded-xl py-1 px-3 text-left transition-all duration-200 shadow-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -508,11 +517,13 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                         <span className="font-bold text-xs md:text-sm truncate block">{selectedStone?.name || 'Material wählen...'}</span>
                         {selectedStone && (
                           <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase shrink-0 ${
-                            (selectedStone.isDekton === true || selectedStone.isDekton === 'true')
-                              ? 'bg-rose-500/10 text-rose-500 dark:text-rose-400'
-                              : 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400'
+                            getStoneMaterial(selectedStone) === 'dekton'
+                              ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                              : getStoneMaterial(selectedStone) === 'neolith'
+                                ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
+                                : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                           }`}>
-                            {(selectedStone.isDekton === true || selectedStone.isDekton === 'true') ? 'Dekton' : 'Naturstein'}
+                            {getStoneMaterialLabel(selectedStone)}
                           </span>
                         )}
                       </div>
@@ -526,9 +537,14 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
 
                 {/* Dropdown Menu */}
                 {dropdownOpen && (
-                  <div className="absolute left-0 right-0 mt-1.5 bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-xl shadow-xl z-50 overflow-hidden flex flex-col max-h-80 transition-all">
+                  <div 
+                    className={`absolute left-0 right-0 bg-white dark:bg-[#121212] border border-slate-200 dark:border-darkBorder rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col transition-all duration-150 ${
+                      openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+                    }`}
+                    style={{ maxHeight: `${maxDropdownHeight}px` }}
+                  >
                     {/* Search Bar */}
-                    <div className="p-2 border-b border-slate-100 dark:border-darkBorder bg-slate-50/50 dark:bg-black/20 flex items-center gap-2">
+                    <div className="p-2 border-b border-slate-100 dark:border-darkBorder bg-slate-50/50 dark:bg-black/20 flex items-center gap-2 shrink-0">
                       <Search className="w-3.5 h-3.5 text-slate-400 shrink-0 ml-1" />
                       <input
                         type="text"
@@ -550,7 +566,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                     </div>
 
                     {/* Scrollable List */}
-                    <div className="overflow-y-auto divide-y divide-slate-100 dark:divide-darkBorder/40">
+                    <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-slate-100 dark:divide-darkBorder/40 pb-1">
                       {(() => {
                         const searchedStones = filteredStones.filter((s) =>
                           s.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -564,12 +580,12 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                           );
                         }
 
-                        return searchedStones.map((s) => {
+                        return searchedStones.map((s, idx) => {
                           const isSelected = s.id === selectedStoneId;
-                          const isDekton = s.isDekton === true || s.isDekton === 'true';
+                          const mat = getStoneMaterial(s);
                           return (
                             <button
-                              key={s.id}
+                              key={`calc-stone-${s.id || idx}-${idx}`}
                               type="button"
                               onClick={() => {
                                 setSelectedStoneId(s.id);
@@ -597,11 +613,13 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                                   <div className="flex items-center gap-1.5">
                                     <span className="text-xs font-bold truncate block">{s.name}</span>
                                     <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase shrink-0 ${
-                                      isDekton
-                                        ? 'bg-rose-500/10 text-rose-500'
-                                        : 'bg-emerald-500/10 text-emerald-500'
+                                      mat === 'dekton'
+                                        ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                                        : mat === 'neolith'
+                                          ? 'bg-orange-500/10 text-orange-600 dark:text-orange-400'
+                                          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                                     }`}>
-                                      {isDekton ? 'Dekton' : 'Naturstein'}
+                                      {getStoneMaterialLabel(s)}
                                     </span>
                                   </div>
                                   <span className="text-[10px] font-mono text-slate-400 dark:text-slate-500 mt-0.5 block">
@@ -621,20 +639,21 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                 )}
               </div>
 
-              {/* Preis-Segment & Gesamtmaße Panel */}
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {selectedStone && (() => {
-                  const segment = getPriceSegment(selectedStone.price);
-                  return (
-                    <div className="p-2 border border-slate-200 dark:border-darkBorder bg-slate-50/50 dark:bg-[#121212]/50 rounded-xl flex flex-col justify-between h-14">
-                      <span className="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider leading-none">Preisklasse</span>
-                      <div className="flex items-center justify-between gap-1.5 mt-1.5">
-                        <span className="text-[11px] font-extrabold text-slate-700 dark:text-slate-350 leading-none">{segment.label}</span>
+              {/* Preis-Segment & Gesamtmaße Panel mit rechts platzierten Speicher-/Cloudbuttons */}
+              <div className="mt-3 flex items-center gap-2">
+                {/* 1. Preisklasse */}
+                <div className="flex-1 min-w-0 p-2 border border-slate-200 dark:border-darkBorder bg-slate-50/50 dark:bg-[#121212]/50 rounded-xl flex flex-col justify-between h-14">
+                  <span className="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider leading-none">Preisklasse</span>
+                  {selectedStone ? (() => {
+                    const segment = getPriceSegment(selectedStone.price);
+                    return (
+                      <div className="flex items-center justify-between gap-1 mt-1.5">
+                        <span className="text-[10px] sm:text-[11px] font-extrabold text-slate-700 dark:text-slate-350 leading-none truncate">{segment.label}</span>
                         <div className="flex gap-0.5 shrink-0">
                           {[1, 2, 3, 4].map((level) => (
                             <div
                               key={level}
-                              className={`w-2 h-1.5 rounded-full transition-all duration-300 ${
+                              className={`w-1.5 sm:w-2 h-1.5 rounded-full transition-all duration-300 ${
                                 level <= segment.level 
                                   ? segment.dotColor 
                                   : 'bg-slate-200 dark:bg-zinc-800'
@@ -643,18 +662,109 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                           ))}
                         </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })() : (
+                    <span className="text-[10px] text-slate-400 italic mt-1.5">-</span>
+                  )}
+                </div>
 
-                <div className="p-2 border border-slate-200 dark:border-darkBorder bg-slate-50/50 dark:bg-[#121212]/50 rounded-xl flex flex-col justify-between h-14">
+                {/* 2. Gesamtmaße */}
+                <div className="flex-1 min-w-0 p-2 border border-slate-200 dark:border-darkBorder bg-slate-50/50 dark:bg-[#121212]/50 rounded-xl flex flex-col justify-between h-14">
                   <span className="text-[8px] font-black text-slate-400 dark:text-zinc-500 uppercase tracking-wider leading-none">Gesamtmaße</span>
-                  <div className="flex items-baseline gap-1 mt-1.5 font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300">
-                    <span className="text-blue-500 dark:text-blue-400">{res.totalSqm.toFixed(2).replace('.', ',')} m²</span>
+                  <div className="flex items-baseline gap-1 mt-1.5 font-mono text-[9px] sm:text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">
+                    <span className="text-blue-500 dark:text-blue-400 shrink-0">{res.totalSqm.toFixed(2).replace('.', ',')} m²</span>
                     <span className="text-slate-300 dark:text-zinc-750 text-[8px]">/</span>
-                    <span className="text-blue-500 dark:text-blue-400">{res.totalLfm.toFixed(2).replace('.', ',')} Lfm</span>
+                    <span className="text-blue-500 dark:text-blue-400 shrink-0">{res.totalLfm.toFixed(2).replace('.', ',')} Lfm</span>
                   </div>
                 </div>
+
+                {/* 3. Speicher- und Cloudbutton übereinander rechts */}
+                {(onSaveCalculation || onLoadSavedCalculation) && (
+                  <div className="flex flex-col justify-between gap-1 shrink-0 h-14">
+                    {onSaveCalculation && (
+                      <button
+                        onClick={onSaveCalculation}
+                        type="button"
+                        className="w-8 h-[25px] rounded-lg bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-500/20 active:scale-90 transition-all cursor-pointer flex items-center justify-center shrink-0"
+                        title="Kalkulation speichern"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {onLoadSavedCalculation && (
+                      <div className="relative" id="saved-calcs-dropdown-container-calc">
+                        <button
+                          onClick={() => setShowSavedCalcsDropdownInCalc(!showSavedCalcsDropdownInCalc)}
+                          type="button"
+                          className="w-8 h-[25px] rounded-lg bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-950/40 text-orange-600 dark:text-orange-400 border border-orange-200/50 dark:border-orange-500/20 active:scale-90 transition-all cursor-pointer flex items-center justify-center shrink-0"
+                          title="Gespeicherte Kalkulation laden"
+                        >
+                          <Cloud className="w-3.5 h-3.5" />
+                        </button>
+
+                        {showSavedCalcsDropdownInCalc && (
+                          <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-[#161616] border border-slate-200 dark:border-darkBorder rounded-xl shadow-xl z-50 py-1.5 overflow-hidden">
+                            <div className="px-3 py-1.5 text-[8.5px] font-black uppercase text-slate-400 border-b border-slate-100 dark:border-darkBorder mb-1 flex justify-between items-center">
+                              <span>Kalkulation laden</span>
+                              <button
+                                type="button"
+                                onClick={() => setShowSavedCalcsDropdownInCalc(false)}
+                                className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 p-0.5 rounded transition-colors cursor-pointer"
+                                title="Schließen"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <div className="max-h-48 overflow-y-auto">
+                              {savedCalculations.length === 0 ? (
+                                <div className="px-3 py-3 text-xs text-slate-450 dark:text-slate-500 text-center italic">
+                                  Keine gespeicherten Kalkulationen
+                                </div>
+                              ) : (
+                                savedCalculations.map((calc, idx) => (
+                                  <div key={`calc-saved-${calc.id || idx}-${idx}`} className="w-full hover:bg-slate-50 dark:hover:bg-white/5 transition-colors flex items-center justify-between px-3 py-2 group">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        onLoadSavedCalculation(calc);
+                                        setShowSavedCalcsDropdownInCalc(false);
+                                      }}
+                                      className="flex-1 text-left flex flex-col gap-0.5 min-w-0 mr-2"
+                                    >
+                                      <div className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
+                                        {calc.name}
+                                      </div>
+                                      <div className="flex justify-between items-center text-[9px] text-slate-450 dark:text-slate-500 font-mono w-full">
+                                        <span className="truncate max-w-[120px]">
+                                          {calc.stoneName}
+                                        </span>
+                                        <span className="text-blue-500 font-bold shrink-0">
+                                          {formatMoney(calc.vk)}
+                                        </span>
+                                      </div>
+                                    </button>
+                                    {onDeleteSavedCalculation && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          onDeleteSavedCalculation(calc.id, calc.name);
+                                        }}
+                                        className="text-red-500 hover:text-red-650 hover:bg-red-50 dark:hover:bg-red-950/20 p-1 rounded-lg active:scale-95 transition-all shrink-0 opacity-60 hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                                        title="Kalkulation pflegen"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    )}
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -675,7 +785,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             </div>
 
             <div className="space-y-5 sm:space-y-6">
-              {parts.map((p) => {
+              {parts.map((p, index) => {
                 const lp = parseFloat(p.l.replace(',', '.')) || 0;
                 const wp = parseFloat(p.w.replace(',', '.')) || 0;
                 const sqm = (lp * wp) / 10000;
@@ -687,7 +797,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
 
                 return (
                   <div
-                    key={p.id}
+                    key={`calc-part-${p.id || index}-${index}`}
                     className="relative w-full rounded-2xl border border-slate-200 dark:border-[#262626] bg-white dark:bg-[#101012] p-4 sm:p-5 flex flex-col justify-between transition-all duration-300 shadow-xs hover:border-slate-300 dark:hover:border-[#333] select-none group/slab overflow-hidden min-h-[120px]"
                   >
                     {/* --- POLISHED EDGES DIRECTLY ON CARD BORDER WITH ROUNDED INNER CORNERS --- */}
@@ -856,7 +966,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
               { key: 'top', label: 'Auflage', val: topCount },
               { key: 'notch', label: 'Ausklinkung', val: notchCount },
               { key: 'hole', label: 'Bohrung', val: holeCount },
-              { key: 'care', label: isDek ? 'Reinigungsmittel' : 'Pflegeset', val: careCount },
+              { key: 'care', label: isCareCleaner ? 'Reinigungsmittel' : 'Pflegeset', val: careCount },
             ].map((mach) => {
               const val = mach.val;
               const isActive = val > 0;
@@ -1081,7 +1191,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
               { key: 'top', label: 'Auflage', val: topCount },
               { key: 'notch', label: 'Ausklinkung', val: notchCount },
               { key: 'hole', label: 'Bohrung', val: holeCount },
-              { key: 'care', label: isDek ? 'Reinigungsmittel' : 'Pflegeset', val: careCount },
+              { key: 'care', label: isCareCleaner ? 'Reinigungsmittel' : 'Pflegeset', val: careCount },
             ].map((mach) => {
               const val = mach.val;
               const isActive = val > 0;

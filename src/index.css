@@ -75,24 +75,30 @@
 
 .card {
   position: relative;
-  overflow: hidden;
   background: white;
   border-radius: 1.25rem;
   border: 1px solid var(--color-slate-200);
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  /* Force WebKit/Blink to respect overflow: hidden with border-radius on mobile */
+}
+
+/* Force WebKit/Blink to respect overflow: hidden with border-radius on mobile ONLY when overflow is explicitly hidden */
+.card.overflow-hidden,
+.relative.overflow-hidden[class*="rounded-"] {
+  overflow: hidden;
   transform: translateZ(0);
   will-change: transform;
   isolation: isolate;
   -webkit-mask-image: -webkit-radial-gradient(white, black);
 }
 
-/* Fix Safari/Chrome mobile rounded corner overflow clipping bug for glow circles and absolute overlays */
-.relative.overflow-hidden[class*="rounded-"] {
-  transform: translateZ(0);
-  will-change: transform;
-  isolation: isolate;
-  -webkit-mask-image: -webkit-radial-gradient(white, black);
+.card.overflow-visible,
+.card.\!overflow-visible,
+.card-tooltip-friendly {
+  overflow: visible !important;
+  transform: none !important;
+  isolation: auto !important;
+  -webkit-mask-image: none !important;
+  will-change: auto !important;
 }
 
 .dark .card {

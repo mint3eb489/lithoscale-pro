@@ -432,7 +432,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     }
   };
 
-  const renderDiffCard = (opt: KitchenVersionOption, label: string) => {
+  const renderDiffCard = (opt: KitchenVersionOption, label: string, idx: number = 0, keyPrefix: string = 'diff') => {
     const {
       isIgnored,
       optRabattMoebelNum,
@@ -464,7 +464,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     const diffGesamtVK = optEndpreisNum - basisEndpreisNum;
 
     return (
-      <div key={opt.id} className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2.5 text-left shadow-md">
+      <div key={`${keyPrefix}-${opt.id || opt.slotIndex || idx}-${idx}`} className="p-3 bg-slate-900/90 border border-slate-800 rounded-xl space-y-2.5 text-left shadow-md">
         <div className="flex items-center justify-between gap-2 border-b border-slate-800/80 pb-2">
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -664,12 +664,15 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                   }
                 }
 
-                // 2. Deduplicate strictly by name (case-insensitive)
+                // 2. Deduplicate strictly by name (case-insensitive) AND id
                 const uniqueByNameMap = new Map<string, { id: string; name: string }>();
+                const seenIds = new Set<string>();
                 rawList.forEach((item) => {
                   const nameKey = item.name.trim().toLowerCase();
-                  if (!uniqueByNameMap.has(nameKey)) {
+                  const idKey = String(item.id).trim();
+                  if (!uniqueByNameMap.has(nameKey) && !seenIds.has(idKey)) {
                     uniqueByNameMap.set(nameKey, item);
+                    seenIds.add(idKey);
                   }
                 });
 
@@ -707,13 +710,13 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                         : 'cursor-pointer hover:border-slate-300 dark:hover:border-slate-700'
                     }`}
                   >
-                    {uniqueList.map((b) => (
-                      <option key={b.id} value={b.id} className="text-slate-900 dark:text-white">
+                    {uniqueList.map((b, idx) => (
+                      <option key={`berater-opt-${b.id}-${idx}`} value={b.id} className="text-slate-900 dark:text-white">
                         {b.name}
                       </option>
                     ))}
-                    {extraFallbackOption && (
-                      <option key={extraFallbackOption.id} value={extraFallbackOption.id} className="text-slate-900 dark:text-white">
+                    {extraFallbackOption && !uniqueList.some((b) => b.id === extraFallbackOption?.id) && (
+                      <option key={`berater-fallback-${extraFallbackOption.id}`} value={extraFallbackOption.id} className="text-slate-900 dark:text-white">
                         {extraFallbackOption.name}
                       </option>
                     )}
@@ -837,8 +840,8 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                           Keine gespeicherten Kalkulationen vorhanden
                         </div>
                       ) : (
-                        savedCalculations.map((calc) => (
-                          <div key={calc.id} className="w-full hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-colors flex items-center justify-between px-3.5 py-2.5 group">
+                        savedCalculations.map((calc, idx) => (
+                          <div key={`kitchen-calc-${calc.id || idx}-${idx}`} className="w-full hover:bg-blue-50/50 dark:hover:bg-blue-500/10 transition-colors flex items-center justify-between px-3.5 py-2.5 group">
                             <button
                               type="button"
                               onClick={() => {
@@ -1043,7 +1046,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
 
               <div className="space-y-1.5">
                 {(currentKitchen[block.type as keyof Kitchen] as KitchenItem[] || []).map((item, index, arr) => (
-                  <div key={item.id} className="flex flex-row items-center gap-1.5 p-1 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/5 transition-all duration-200 w-full">
+                  <div key={`kitchen-item-${block.type}-${item.id || index}-${index}`} className="flex flex-row items-center gap-1.5 p-1 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/5 transition-all duration-200 w-full">
                     <input
                       type="text"
                       value={item.name}
@@ -1123,7 +1126,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
           </div>
           <div className="space-y-1.5">
             {(currentKitchen.mehrpreise || []).map((item, index, arr) => (
-              <div key={item.id} className="flex flex-row items-center gap-1.5 p-1 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/5 transition-all duration-200 w-full">
+              <div key={`kitchen-mehrpreis-${item.id || index}-${index}`} className="flex flex-row items-center gap-1.5 p-1 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-white/5 transition-all duration-200 w-full">
                 <input
                   type="text"
                   value={item.name}
@@ -1626,8 +1629,8 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
 
                   {(kitchen.versionOptions || []).length > 0 ? (
                     <div className="space-y-3">
-                      {(kitchen.versionOptions || []).map((opt) =>
-                        renderDiffCard(opt, opt.slotIndex === 1 ? 'Alternative 1' : 'Alternative 2')
+                      {(kitchen.versionOptions || []).map((opt, idx) =>
+                        renderDiffCard(opt, opt.slotIndex === 1 ? 'Alternative 1' : 'Alternative 2', idx, 'desktop')
                       )}
                     </div>
                   ) : (
@@ -1908,8 +1911,8 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
 
               {(kitchen.versionOptions || []).length > 0 && (
                 <div className="space-y-2 pt-1">
-                  {(kitchen.versionOptions || []).map((opt) =>
-                    renderDiffCard(opt, opt.slotIndex === 1 ? 'Alternative 1' : 'Alternative 2')
+                  {(kitchen.versionOptions || []).map((opt, idx) =>
+                    renderDiffCard(opt, opt.slotIndex === 1 ? 'Alternative 1' : 'Alternative 2', idx, 'mobile')
                   )}
                 </div>
               )}

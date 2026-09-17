@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Stone, AppConfig, Berater, UserProfile, getBlancoChoiceArticleList } from '../types';
+import { Stone, AppConfig, Berater, UserProfile, getBlancoChoiceArticleList, getStoneMaterial, StoneMaterialType } from '../types';
 import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown, Percent, Tag, PlusCircle, Check, ListPlus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -7,8 +7,9 @@ interface AdminTabProps {
   stones: Stone[];
   config: AppConfig;
   onUpdateConfig: (key: keyof AppConfig, value: any) => void;
-  onAddStone: () => void;
+  onAddStone: (stoneData?: { name: string; price: number; materialType: StoneMaterialType; image: string }) => void;
   onUpdateStone: (id: string, field: keyof Stone, value: any) => void;
+  onUpdateStoneMaterial?: (id: string, material: 'natur' | 'dekton' | 'neolith') => void;
   onDeleteStone: (id: string) => void;
   onPushToCloud: () => void;
   onFactoryReset: () => void;
@@ -38,17 +39,23 @@ const configLabels: Record<string, string> = {
   gluing: "Verkleben (€)",
   natEdge: "Kante Natur (€/Lfm)",
   dekEdge: "Kante Dekton (€/Lfm)",
+  neoEdge: "Kante Neolith (€/Lfm)",
   natCutUnder: "UB-Ausschnitt Natur (€/Stk)",
   natCutFlush: "FB-Ausschnitt Natur (€/Stk)",
   natCutTop: "Auflage Natur (€/Stk)",
   dekCutUnder: "UB-Ausschnitt Dekton (€/Stk)",
   dekCutFlush: "FB-Ausschnitt Dekton (€/Stk)",
   dekCutTop: "Auflage Dekton (€/Stk)",
+  neoCutUnder: "UB-Ausschnitt Neolith (€/Stk)",
+  neoCutFlush: "FB-Ausschnitt Neolith (€/Stk)",
+  neoCutTop: "Auflage Neolith (€/Stk)",
   notch: "Ausklinkung (€/Stk)",
   natNotch: "Ausklinkung Natur (€/Stk)",
   dekNotch: "Ausklinkung Dekton (€/Stk)",
+  neoNotch: "Ausklinkung Neolith (€/Stk)",
   natPflegeset: "Pflegeset Natur (€/Stk)",
   dekReinigungsmittel: "Reinigungsmittel Dekton (€/Stk)",
+  neoReinigungsmittel: "Reinigungsmittel Neolith (€/Stk)",
   hole: "Bohrung (€/Stk)",
   miter: "Gehrung (€/Lfm)",
   moebelFactor: "Möbel-Faktor (VK)",
@@ -147,14 +154,17 @@ const ConfigInput: React.FC<ConfigInputProps> = ({
 
   return (
     <div className="space-y-1 relative group/input">
-      <div className="flex items-center justify-between">
-        <label className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+      <div className="flex items-center justify-between h-4 overflow-hidden">
+        <label
+          title={label}
+          className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider block whitespace-nowrap truncate select-none"
+        >
           {label}
         </label>
       </div>
       <div className="relative flex items-center">
         {icon && (
-          <div className="absolute left-2.5 text-slate-400 dark:text-slate-500">
+          <div className="absolute left-2.5 text-slate-400 dark:text-slate-500 pointer-events-none">
             {icon}
           </div>
         )}
@@ -169,11 +179,11 @@ const ConfigInput: React.FC<ConfigInputProps> = ({
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           className={`input-field input-field-compact text-xs font-mono w-full ${
-            icon ? '!pl-8' : '!pl-3'
-          } ${suffix ? '!pr-14' : '!pr-3'} bg-slate-50/50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-lg focus:border-blue-500 focus:bg-white dark:focus:bg-black transition-all text-slate-800 dark:text-slate-100`}
+            icon ? '!pl-8' : '!pl-2.5'
+          } ${suffix ? '!pr-12' : '!pr-2.5'} bg-slate-50/50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-lg focus:border-blue-500 focus:bg-white dark:focus:bg-black transition-all text-slate-800 dark:text-slate-100`}
         />
         {suffix && (
-          <span className="absolute right-2.5 text-[8px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-zinc-700/50 select-none">
+          <span className="absolute right-2 text-[8px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-zinc-800 px-1 py-0.5 rounded border border-slate-200/50 dark:border-zinc-700/50 select-none pointer-events-none">
             {suffix}
           </span>
         )}
@@ -188,6 +198,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
   onUpdateConfig,
   onAddStone,
   onUpdateStone,
+  onUpdateStoneMaterial,
   onDeleteStone,
   onPushToCloud,
   onFactoryReset,
@@ -255,8 +266,48 @@ export const AdminTab: React.FC<AdminTabProps> = ({
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
 
   const [stoneSearch, setStoneSearch] = useState('');
-  const [stoneFilter, setStoneFilter] = useState<'all' | 'dekton' | 'natur'>('all');
+  const [stoneFilter, setStoneFilter] = useState<'all' | 'natur' | 'dekton' | 'neolith'>('all');
   const [isMaterialCatalogOpen, setIsMaterialCatalogOpen] = useState(false);
+
+  // New Stone Modal state
+  const [isAddStoneModalOpen, setIsAddStoneModalOpen] = useState(false);
+  const [newStoneName, setNewStoneName] = useState('');
+  const [newStoneMaterial, setNewStoneMaterial] = useState<StoneMaterialType>('natur');
+  const [newStonePrice, setNewStonePrice] = useState('');
+  const [newStoneImage, setNewStoneImage] = useState('');
+  const [addStoneError, setAddStoneError] = useState('');
+
+  const handleOpenAddStoneModal = (defaultMat?: StoneMaterialType) => {
+    setNewStoneName('');
+    setAddStoneError('');
+    const initialMat = defaultMat || (stoneFilter !== 'all' ? stoneFilter : 'natur');
+    setNewStoneMaterial(initialMat);
+    setNewStonePrice('');
+    setNewStoneImage('');
+    setIsAddStoneModalOpen(true);
+  };
+
+  const handleAddStoneSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmedName = newStoneName.trim();
+    if (!trimmedName) {
+      setAddStoneError('Bitte gib einen Namen für das Material an.');
+      return;
+    }
+    const parsedPrice = parseFloat(newStonePrice.replace(',', '.')) || 0;
+    onAddStone({
+      name: trimmedName,
+      materialType: newStoneMaterial,
+      price: parsedPrice,
+      image: newStoneImage.trim(),
+    });
+
+    if (stoneFilter !== 'all' && stoneFilter !== newStoneMaterial) {
+      setStoneFilter(newStoneMaterial);
+    }
+
+    setIsAddStoneModalOpen(false);
+  };
 
   const filteredStones = stones.filter((s) => {
     if (stoneSearch.trim() !== '') {
@@ -264,9 +315,10 @@ export const AdminTab: React.FC<AdminTabProps> = ({
         return false;
       }
     }
-    const isDek = s.isDekton === true || s.isDekton === 'true';
-    if (stoneFilter === 'dekton' && !isDek) return false;
-    if (stoneFilter === 'natur' && isDek) return false;
+    const mat = getStoneMaterial(s);
+    if (stoneFilter === 'dekton' && mat !== 'dekton') return false;
+    if (stoneFilter === 'neolith' && mat !== 'neolith') return false;
+    if (stoneFilter === 'natur' && mat !== 'natur') return false;
     return true;
   });
 
@@ -545,21 +597,21 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                 </div>
               </div>
 
-              {/* Section 2: Naturstein vs. Dekton Bearbeitung */}
+              {/* Section 2: Naturstein vs. Dekton vs. Neolith Bearbeitung */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-b border-slate-100 dark:border-zinc-800/40 pb-1">
-                  <Layers className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Material-Bearbeitung (Vergleich)</span>
+                  <Layers className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Material-Bearbeitung (Naturstein, Dekton & Neolith)</span>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Naturstein Column */}
-                  <div className="p-4 rounded-xl bg-amber-500/[0.02] dark:bg-amber-500/[0.01] border border-amber-500/10 space-y-4">
-                    <div className="flex items-center justify-between border-b border-amber-500/15 pb-2">
-                      <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Naturstein Column - GRÜN */}
+                  <div className="p-4 rounded-xl bg-emerald-500/[0.03] dark:bg-emerald-500/[0.02] border border-emerald-500/20 space-y-4">
+                    <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2">
+                      <span className="text-[10px] font-black uppercase text-emerald-600 dark:text-emerald-400 tracking-wider">
                         Naturstein (Granit etc.)
                       </span>
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
+                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <ConfigInput
@@ -572,21 +624,21 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       <ConfigInput
                         configKey="natCutUnder"
                         value={config.natCutUnder}
-                        label="UB-Ausschnitt (Unterbau)"
+                        label="UB (Unterbau)"
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
                       />
                       <ConfigInput
                         configKey="natCutFlush"
                         value={config.natCutFlush}
-                        label="FB-Ausschnitt (Flächenbündig)"
+                        label="FB (Flächenbündig)"
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
                       />
                       <ConfigInput
                         configKey="natCutTop"
                         value={config.natCutTop}
-                        label="Auflage Ausschnitt"
+                        label="Auflage"
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
                       />
@@ -607,13 +659,13 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                     </div>
                   </div>
 
-                  {/* Dekton Column */}
-                  <div className="p-4 rounded-xl bg-indigo-500/[0.02] dark:bg-indigo-500/[0.01] border border-indigo-500/10 space-y-4">
-                    <div className="flex items-center justify-between border-b border-indigo-500/15 pb-2">
-                      <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 tracking-wider">
+                  {/* Dekton Column - ROT */}
+                  <div className="p-4 rounded-xl bg-red-500/[0.03] dark:bg-red-500/[0.02] border border-red-500/20 space-y-4">
+                    <div className="flex items-center justify-between border-b border-red-500/20 pb-2">
+                      <span className="text-[10px] font-black uppercase text-red-600 dark:text-red-400 tracking-wider">
                         Dekton / Keramik
                       </span>
-                      <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                      <span className="w-2 h-2 rounded-full bg-red-500" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <ConfigInput
@@ -626,21 +678,21 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       <ConfigInput
                         configKey="dekCutUnder"
                         value={config.dekCutUnder}
-                        label="UB-Ausschnitt (Unterbau)"
+                        label="UB (Unterbau)"
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
                       />
                       <ConfigInput
                         configKey="dekCutFlush"
                         value={config.dekCutFlush}
-                        label="FB-Ausschnitt (Flächenbündig)"
+                        label="FB (Flächenbündig)"
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
                       />
                       <ConfigInput
                         configKey="dekCutTop"
                         value={config.dekCutTop}
-                        label="Auflage Ausschnitt"
+                        label="Auflage"
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
                       />
@@ -654,6 +706,60 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       <ConfigInput
                         configKey="dekReinigungsmittel"
                         value={config.dekReinigungsmittel}
+                        label="Reinigungsmittel"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Neolith Column - ORANGE */}
+                  <div className="p-4 rounded-xl bg-orange-500/[0.03] dark:bg-orange-500/[0.02] border border-orange-500/20 space-y-4">
+                    <div className="flex items-center justify-between border-b border-orange-500/20 pb-2">
+                      <span className="text-[10px] font-black uppercase text-orange-600 dark:text-orange-400 tracking-wider">
+                        Neolith (Sinterkeramik)
+                      </span>
+                      <span className="w-2 h-2 rounded-full bg-orange-500" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <ConfigInput
+                        configKey="neoEdge"
+                        value={config.neoEdge ?? config.dekEdge ?? 20}
+                        label="Kantenbearbeitung"
+                        suffix="€/Lfm"
+                        onUpdate={onUpdateConfig}
+                      />
+                      <ConfigInput
+                        configKey="neoCutUnder"
+                        value={config.neoCutUnder ?? config.dekCutUnder ?? 177}
+                        label="UB (Unterbau)"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
+                      <ConfigInput
+                        configKey="neoCutFlush"
+                        value={config.neoCutFlush ?? config.dekCutFlush ?? 177}
+                        label="FB (Flächenbündig)"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
+                      <ConfigInput
+                        configKey="neoCutTop"
+                        value={config.neoCutTop ?? config.dekCutTop ?? 85}
+                        label="Auflage"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
+                      <ConfigInput
+                        configKey="neoNotch"
+                        value={config.neoNotch ?? config.dekNotch ?? 45}
+                        label="Ausklinkung"
+                        suffix="€/Stk"
+                        onUpdate={onUpdateConfig}
+                      />
+                      <ConfigInput
+                        configKey="neoReinigungsmittel"
+                        value={config.neoReinigungsmittel ?? config.dekReinigungsmittel ?? 45}
                         label="Reinigungsmittel"
                         suffix="€/Stk"
                         onUpdate={onUpdateConfig}
@@ -1000,6 +1106,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                     <AnimatePresence>
                       {activeTooltip === 'importMoebel' && (
                         <motion.div
+                          key="tooltip-importMoebel"
                           initial={{ opacity: 0, y: 8, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -1074,6 +1181,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       <AnimatePresence>
                         {activeTooltip === 'importMiele' && (
                           <motion.div
+                            key="tooltip-importMiele"
                             initial={{ opacity: 0, y: 8, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -1117,6 +1225,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       <AnimatePresence>
                         {activeTooltip === 'importGeraete' && (
                           <motion.div
+                            key="tooltip-importGeraete"
                             initial={{ opacity: 0, y: 8, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -1181,6 +1290,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       <AnimatePresence>
                         {activeTooltip === 'importWasser' && (
                           <motion.div
+                            key="tooltip-importWasser"
                             initial={{ opacity: 0, y: 8, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -1240,6 +1350,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                           <AnimatePresence>
                             {activeTooltip === 'importBlancoChoice' && (
                               <motion.div
+                                key="tooltip-importBlancoChoice"
                                 initial={{ opacity: 0, y: 8, scale: 0.95 }}
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -1280,9 +1391,9 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                           {currentBlancoArticles.length === 0 ? (
                             <span className="text-[10px] text-slate-400 italic">Keine Artikelnummern hinterlegt</span>
                           ) : (
-                            currentBlancoArticles.map((artNr) => (
+                            currentBlancoArticles.map((artNr, idx) => (
                               <span
-                                key={artNr}
+                                key={`blanco-art-${artNr}-${idx}`}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-purple-50 dark:bg-purple-950/40 border border-purple-200/70 dark:border-purple-800/50 text-[11px] font-mono font-medium text-purple-700 dark:text-purple-300 shadow-xs"
                               >
                                 <Tag className="w-2.5 h-2.5 opacity-60" />
@@ -1374,6 +1485,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       <AnimatePresence>
                         {activeTooltip === 'importSpuele' && (
                           <motion.div
+                            key="tooltip-importSpuele"
                             initial={{ opacity: 0, y: 8, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -1417,6 +1529,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                       <AnimatePresence>
                         {activeTooltip === 'importStein' && (
                           <motion.div
+                            key="tooltip-importStein"
                             initial={{ opacity: 0, y: 8, scale: 0.95 }}
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 8, scale: 0.95 }}
@@ -1477,14 +1590,14 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                     if (!aIsEnrico && bIsEnrico) return 1;
                     return 0;
                   })
-                  .map((u) => {
+                  .map((u, idx) => {
                     const isSelf = u.id === currentUserUid;
                   const isRowSysAdmin = u.role === 'sys-admin';
                   const cannotEdit = !isSysAdmin && isRowSysAdmin;
 
                   return (
                     <div
-                      key={u.id}
+                      key={`admin-user-${u.id || idx}-${idx}`}
                       className="p-4 bg-slate-50 dark:bg-[#0c0c0c] rounded-2xl border border-slate-200 dark:border-darkBorder flex flex-col gap-4 transition-all hover:border-slate-300 dark:hover:border-zinc-800"
                     >
                       {/* Top Row: User Details + Role Dropdown + Delete */}
@@ -1663,9 +1776,10 @@ export const AdminTab: React.FC<AdminTabProps> = ({
           {/* Sliding Modal for Adding Users */}
           <AnimatePresence>
             {isAddUserOpen && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div key="add-user-modal-wrapper" className="fixed inset-0 z-50 flex items-center justify-center p-4">
                 {/* Backdrop */}
                 <motion.div
+                  key="add-user-backdrop"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -1675,6 +1789,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                 
                 {/* Modal Content */}
                 <motion.div
+                  key="add-user-content"
                   initial={{ opacity: 0, scale: 0.95, y: 15 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 15 }}
@@ -1750,9 +1865,10 @@ export const AdminTab: React.FC<AdminTabProps> = ({
       {/* Sliding Modal for Material Catalog */}
       <AnimatePresence>
         {isMaterialCatalogOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div key="material-catalog-modal-wrapper" className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div
+              key="material-catalog-backdrop"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -1762,10 +1878,11 @@ export const AdminTab: React.FC<AdminTabProps> = ({
             
             {/* Modal Content */}
             <motion.div
+              key="material-catalog-content"
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden z-10"
+              className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-5xl max-h-[85vh] flex flex-col shadow-2xl relative overflow-hidden z-10"
             >
               {/* Header */}
               <div className="p-5 border-b border-slate-100 dark:border-zinc-800 pb-4 flex items-center justify-between shrink-0">
@@ -1775,21 +1892,21 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                     Material-Katalog ({stones.length} Einträge)
                   </h3>
                   <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                    Datenbank für Naturstein- und Dekton-Platten zur Kalkulation
+                    Datenbank für Naturstein-, Dekton- und Neolith-Platten zur Kalkulation
                   </p>
                 </div>
                 <button
                   onClick={() => setIsMaterialCatalogOpen(false)}
-                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-slate-500 dark:text-slate-400 transition-colors"
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Controls */}
-              <div className="p-4 border-b border-slate-100 dark:border-zinc-850 bg-slate-50/50 dark:bg-zinc-900 grid grid-cols-1 md:grid-cols-3 gap-3 items-center shrink-0">
+              <div className="p-3.5 sm:p-4 border-b border-slate-100 dark:border-zinc-850 bg-slate-50/50 dark:bg-zinc-900 flex flex-col md:flex-row gap-2.5 items-stretch md:items-center shrink-0">
                 {/* Search */}
-                <div className="relative">
+                <div className="relative md:w-52 lg:w-56 shrink-0">
                   <input
                     type="text"
                     placeholder="Material suchen..."
@@ -1805,10 +1922,10 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                 </div>
 
                 {/* Filter */}
-                <div className="flex bg-slate-100 dark:bg-zinc-950 p-1 rounded-xl border border-slate-200 dark:border-zinc-800 h-9 items-center">
+                <div className="flex-1 flex bg-slate-100 dark:bg-zinc-950 p-1 rounded-xl border border-slate-200 dark:border-zinc-800 h-9 items-center min-w-0">
                   <button
                     onClick={() => setStoneFilter('all')}
-                    className={`flex-1 text-center py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all h-7 flex items-center justify-center ${
+                    className={`flex-1 min-w-0 text-center py-1 px-1 sm:px-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all h-7 flex items-center justify-center whitespace-nowrap cursor-pointer ${
                       stoneFilter === 'all'
                         ? 'bg-white dark:bg-zinc-850 text-slate-900 dark:text-white shadow-xs font-black'
                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
@@ -1818,52 +1935,409 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                   </button>
                   <button
                     onClick={() => setStoneFilter('natur')}
-                    className={`flex-1 text-center py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all h-7 flex items-center justify-center ${
+                    className={`flex-1 min-w-0 text-center py-1 px-1 sm:px-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all h-7 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
                       stoneFilter === 'natur'
-                        ? 'bg-white dark:bg-zinc-850 text-slate-900 dark:text-white shadow-xs font-black'
+                        ? 'bg-white dark:bg-zinc-850 text-emerald-600 dark:text-emerald-400 shadow-xs font-black'
                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
                     }`}
                   >
-                    Naturstein ({stones.filter(s => !(s.isDekton === true || s.isDekton === 'true')).length})
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="truncate">Naturstein ({stones.filter(s => getStoneMaterial(s) === 'natur').length})</span>
                   </button>
                   <button
                     onClick={() => setStoneFilter('dekton')}
-                    className={`flex-1 text-center py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all h-7 flex items-center justify-center ${
+                    className={`flex-1 min-w-0 text-center py-1 px-1 sm:px-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all h-7 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
                       stoneFilter === 'dekton'
-                        ? 'bg-white dark:bg-zinc-850 text-slate-900 dark:text-white shadow-xs font-black'
+                        ? 'bg-white dark:bg-zinc-850 text-red-600 dark:text-red-400 shadow-xs font-black'
                         : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
                     }`}
                   >
-                    Dekton ({stones.filter(s => (s.isDekton === true || s.isDekton === 'true')).length})
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                    <span className="truncate">Dekton ({stones.filter(s => getStoneMaterial(s) === 'dekton').length})</span>
+                  </button>
+                  <button
+                    onClick={() => setStoneFilter('neolith')}
+                    className={`flex-1 min-w-0 text-center py-1 px-1 sm:px-2 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all h-7 flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer ${
+                      stoneFilter === 'neolith'
+                        ? 'bg-white dark:bg-zinc-850 text-orange-600 dark:text-orange-400 shadow-xs font-black'
+                        : 'text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                    }`}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0" />
+                    <span className="truncate">Neolith ({stones.filter(s => getStoneMaterial(s) === 'neolith').length})</span>
                   </button>
                 </div>
 
                 {/* Add Stone Button */}
                 <button
-                  onClick={onAddStone}
-                  className="bg-blue-600 hover:bg-blue-550 text-white h-9 px-4 rounded-xl text-[10px] font-bold uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                  type="button"
+                  onClick={() => handleOpenAddStoneModal()}
+                  className="bg-blue-600 hover:bg-blue-550 text-white h-9 px-3.5 rounded-xl text-[10px] font-bold uppercase tracking-wider shrink-0 active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer whitespace-nowrap"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Material hinzufügen
+                  <span>Material hinzufügen</span>
                 </button>
               </div>
 
               {/* Stones List */}
-              <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-50/20 dark:bg-zinc-950/20">
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/20 dark:bg-zinc-950/20">
                 {filteredStones.length === 0 ? (
                   <div className="text-center py-12 text-slate-400 text-xs">
                     Keine Materialien gefunden.
                   </div>
+                ) : stoneFilter === 'all' && !stoneSearch.trim() ? (
+                  /* Grouped into dedicated areas when 'Alle' is selected */
+                  <div className="space-y-6">
+                    {/* Neolith Section - ORANGE */}
+                    {stones.filter(s => getStoneMaterial(s) === 'neolith').length > 0 && (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-orange-500/20">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                            <span className="text-xs font-black uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                              Neolith ({stones.filter(s => getStoneMaterial(s) === 'neolith').length})
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAddStoneModal('neolith')}
+                            className="text-[9px] font-bold text-orange-600 hover:text-orange-700 dark:text-orange-400 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Neolith hinzufügen
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {stones.filter(s => getStoneMaterial(s) === 'neolith').map((s, idx) => {
+                            const hasImage = s.image && s.image.trim() !== '';
+                            const imageUrl = hasImage
+                              ? (s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`)
+                              : '';
+                            const mat = getStoneMaterial(s);
+                            const nextMat: 'natur' | 'dekton' | 'neolith' = 
+                              mat === 'natur' ? 'dekton' : mat === 'dekton' ? 'neolith' : 'natur';
+                            return (
+                              <div
+                                key={`admin-neolith-${s.id || idx}-${idx}`}
+                                className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-orange-500/20 dark:border-orange-500/15 flex items-center gap-3 transition-all hover:border-orange-500/40 min-w-0 overflow-hidden shadow-xs"
+                              >
+                                <div className="w-12 h-12 rounded-lg border border-slate-100 dark:border-zinc-800 overflow-hidden bg-slate-50 dark:bg-zinc-950 shrink-0 flex items-center justify-center relative group/admin-thumb">
+                                  {hasImage ? (
+                                    <img
+                                      src={imageUrl}
+                                      alt={s.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        const parent = e.currentTarget.parentElement;
+                                        if (parent) {
+                                          const placeholder = parent.querySelector('.thumb-fallback');
+                                          if (placeholder) placeholder.classList.remove('hidden');
+                                        }
+                                      }}
+                                    />
+                                  ) : null}
+                                  <div className={`thumb-fallback text-[7px] font-black uppercase text-slate-400 text-center leading-tight ${hasImage ? 'hidden' : ''}`}>
+                                    KEIN<br />BILD
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                  <div className="flex gap-2 min-w-0 items-center justify-between">
+                                    <input
+                                      value={s.name}
+                                      onChange={(e) => onUpdateStone(s.id, 'name', e.target.value)}
+                                      className="flex-1 min-w-0 bg-transparent font-bold outline-none text-xs px-1 py-0.5 border-b border-transparent focus:border-orange-500 text-slate-900 dark:text-white"
+                                      placeholder="Stein Name"
+                                    />
+                                    <input
+                                      value={s.image || ''}
+                                      onChange={(e) => onUpdateStone(s.id, 'image', e.target.value)}
+                                      className="w-20 sm:w-28 min-w-0 bg-transparent outline-none text-[9px] font-mono text-orange-500 px-1 py-0.5 border-b border-transparent focus:border-orange-500 text-right"
+                                      placeholder="Bild URL"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase">EK €</span>
+                                      <input
+                                        type="number"
+                                        value={s.price}
+                                        onChange={(e) => onUpdateStone(s.id, 'price', parseFloat(e.target.value) || 0)}
+                                        className="bg-slate-50 dark:bg-zinc-950 w-16 text-center font-mono border border-slate-200 dark:border-zinc-800 rounded-lg p-1 text-[11px] focus:border-orange-500 outline-none text-slate-900 dark:text-white"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        if (onUpdateStoneMaterial) {
+                                          onUpdateStoneMaterial(s.id, nextMat);
+                                        } else {
+                                          onUpdateStone(s.id, 'materialType', nextMat);
+                                          onUpdateStone(s.id, 'isDekton', nextMat === 'dekton');
+                                          onUpdateStone(s.id, 'isNeolith', nextMat === 'neolith');
+                                        }
+                                      }}
+                                      title="Klicken zum Umschalten (Naturstein / Dekton / Neolith)"
+                                      className="text-[8px] font-black px-2 py-1 rounded-lg uppercase transition-all w-20 shrink-0 active:scale-95 text-white bg-orange-500 hover:bg-orange-600 cursor-pointer"
+                                    >
+                                      Neolith
+                                    </button>
+                                    <button
+                                      onClick={() => onDeleteStone(s.id)}
+                                      className="text-red-500 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors ml-auto shrink-0 flex items-center justify-center cursor-pointer"
+                                      title="Löschen"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dekton Section - ROT */}
+                    {stones.filter(s => getStoneMaterial(s) === 'dekton').length > 0 && (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-red-500/20">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
+                            <span className="text-xs font-black uppercase tracking-wider text-red-600 dark:text-red-400">
+                              Dekton ({stones.filter(s => getStoneMaterial(s) === 'dekton').length})
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAddStoneModal('dekton')}
+                            className="text-[9px] font-bold text-red-600 hover:text-red-700 dark:text-red-400 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Dekton hinzufügen
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {stones.filter(s => getStoneMaterial(s) === 'dekton').map((s, idx) => {
+                            const hasImage = s.image && s.image.trim() !== '';
+                            const imageUrl = hasImage
+                              ? (s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`)
+                              : '';
+                            const mat = getStoneMaterial(s);
+                            const nextMat: 'natur' | 'dekton' | 'neolith' = 
+                              mat === 'natur' ? 'dekton' : mat === 'dekton' ? 'neolith' : 'natur';
+                            return (
+                              <div
+                                key={`admin-dekton-${s.id || idx}-${idx}`}
+                                className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-red-500/20 dark:border-red-500/15 flex items-center gap-3 transition-all hover:border-red-500/40 min-w-0 overflow-hidden shadow-xs"
+                              >
+                                <div className="w-12 h-12 rounded-lg border border-slate-100 dark:border-zinc-800 overflow-hidden bg-slate-50 dark:bg-zinc-950 shrink-0 flex items-center justify-center relative group/admin-thumb">
+                                  {hasImage ? (
+                                    <img
+                                      src={imageUrl}
+                                      alt={s.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        const parent = e.currentTarget.parentElement;
+                                        if (parent) {
+                                          const placeholder = parent.querySelector('.thumb-fallback');
+                                          if (placeholder) placeholder.classList.remove('hidden');
+                                        }
+                                      }}
+                                    />
+                                  ) : null}
+                                  <div className={`thumb-fallback text-[7px] font-black uppercase text-slate-400 text-center leading-tight ${hasImage ? 'hidden' : ''}`}>
+                                    KEIN<br />BILD
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                  <div className="flex gap-2 min-w-0 items-center justify-between">
+                                    <input
+                                      value={s.name}
+                                      onChange={(e) => onUpdateStone(s.id, 'name', e.target.value)}
+                                      className="flex-1 min-w-0 bg-transparent font-bold outline-none text-xs px-1 py-0.5 border-b border-transparent focus:border-red-500 text-slate-900 dark:text-white"
+                                      placeholder="Stein Name"
+                                    />
+                                    <input
+                                      value={s.image || ''}
+                                      onChange={(e) => onUpdateStone(s.id, 'image', e.target.value)}
+                                      className="w-20 sm:w-28 min-w-0 bg-transparent outline-none text-[9px] font-mono text-red-500 px-1 py-0.5 border-b border-transparent focus:border-red-500 text-right"
+                                      placeholder="Bild URL"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase">EK €</span>
+                                      <input
+                                        type="number"
+                                        value={s.price}
+                                        onChange={(e) => onUpdateStone(s.id, 'price', parseFloat(e.target.value) || 0)}
+                                        className="bg-slate-50 dark:bg-zinc-950 w-16 text-center font-mono border border-slate-200 dark:border-zinc-800 rounded-lg p-1 text-[11px] focus:border-red-500 outline-none text-slate-900 dark:text-white"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        if (onUpdateStoneMaterial) {
+                                          onUpdateStoneMaterial(s.id, nextMat);
+                                        } else {
+                                          onUpdateStone(s.id, 'materialType', nextMat);
+                                          onUpdateStone(s.id, 'isDekton', nextMat === 'dekton');
+                                          onUpdateStone(s.id, 'isNeolith', nextMat === 'neolith');
+                                        }
+                                      }}
+                                      title="Klicken zum Umschalten (Naturstein / Dekton / Neolith)"
+                                      className="text-[8px] font-black px-2 py-1 rounded-lg uppercase transition-all w-20 shrink-0 active:scale-95 text-white bg-red-500 hover:bg-red-600 cursor-pointer"
+                                    >
+                                      Dekton
+                                    </button>
+                                    <button
+                                      onClick={() => onDeleteStone(s.id)}
+                                      className="text-red-500 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors ml-auto shrink-0 flex items-center justify-center cursor-pointer"
+                                      title="Löschen"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Naturstein Section */}
+                    {stones.filter(s => getStoneMaterial(s) === 'natur').length > 0 && (
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-emerald-500/20">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                            <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                              Naturstein ({stones.filter(s => getStoneMaterial(s) === 'natur').length})
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenAddStoneModal('natur')}
+                            className="text-[9px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                          >
+                            <Plus className="w-3 h-3" />
+                            Naturstein hinzufügen
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {stones.filter(s => getStoneMaterial(s) === 'natur').map((s, idx) => {
+                            const hasImage = s.image && s.image.trim() !== '';
+                            const imageUrl = hasImage
+                              ? (s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`)
+                              : '';
+                            const mat = getStoneMaterial(s);
+                            const nextMat: 'natur' | 'dekton' | 'neolith' = 
+                              mat === 'natur' ? 'dekton' : mat === 'dekton' ? 'neolith' : 'natur';
+                            return (
+                              <div
+                                key={`admin-natur-${s.id || idx}-${idx}`}
+                                className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800/80 flex items-center gap-3 transition-all hover:border-slate-300 dark:hover:border-slate-700 min-w-0 overflow-hidden shadow-xs"
+                              >
+                                <div className="w-12 h-12 rounded-lg border border-slate-100 dark:border-zinc-800 overflow-hidden bg-slate-50 dark:bg-zinc-950 shrink-0 flex items-center justify-center relative group/admin-thumb">
+                                  {hasImage ? (
+                                    <img
+                                      src={imageUrl}
+                                      alt={s.name}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        const parent = e.currentTarget.parentElement;
+                                        if (parent) {
+                                          const placeholder = parent.querySelector('.thumb-fallback');
+                                          if (placeholder) placeholder.classList.remove('hidden');
+                                        }
+                                      }}
+                                    />
+                                  ) : null}
+                                  <div className={`thumb-fallback text-[7px] font-black uppercase text-slate-400 text-center leading-tight ${hasImage ? 'hidden' : ''}`}>
+                                    KEIN<br />BILD
+                                  </div>
+                                </div>
+                                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                                  <div className="flex gap-2 min-w-0 items-center justify-between">
+                                    <input
+                                      value={s.name}
+                                      onChange={(e) => onUpdateStone(s.id, 'name', e.target.value)}
+                                      className="flex-1 min-w-0 bg-transparent font-bold outline-none text-xs px-1 py-0.5 border-b border-transparent focus:border-emerald-500 text-slate-900 dark:text-white"
+                                      placeholder="Stein Name"
+                                    />
+                                    <input
+                                      value={s.image || ''}
+                                      onChange={(e) => onUpdateStone(s.id, 'image', e.target.value)}
+                                      className="w-20 sm:w-28 min-w-0 bg-transparent outline-none text-[9px] font-mono text-emerald-500 px-1 py-0.5 border-b border-transparent focus:border-emerald-500 text-right"
+                                      placeholder="Bild URL"
+                                    />
+                                  </div>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <span className="text-[8px] font-black text-slate-400 dark:text-slate-500 uppercase">EK €</span>
+                                      <input
+                                        type="number"
+                                        value={s.price}
+                                        onChange={(e) => onUpdateStone(s.id, 'price', parseFloat(e.target.value) || 0)}
+                                        className="bg-slate-50 dark:bg-zinc-950 w-16 text-center font-mono border border-slate-200 dark:border-zinc-800 rounded-lg p-1 text-[11px] focus:border-emerald-500 outline-none text-slate-900 dark:text-white"
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        if (onUpdateStoneMaterial) {
+                                          onUpdateStoneMaterial(s.id, nextMat);
+                                        } else {
+                                          onUpdateStone(s.id, 'materialType', nextMat);
+                                          onUpdateStone(s.id, 'isDekton', nextMat === 'dekton');
+                                          onUpdateStone(s.id, 'isNeolith', nextMat === 'neolith');
+                                        }
+                                      }}
+                                      title="Klicken zum Umschalten (Naturstein / Dekton / Neolith)"
+                                      className="text-[8px] font-black px-2 py-1 rounded-lg uppercase transition-all w-20 shrink-0 active:scale-95 text-white bg-emerald-500 hover:bg-emerald-600 cursor-pointer"
+                                    >
+                                      Naturstein
+                                    </button>
+                                    <button
+                                      onClick={() => onDeleteStone(s.id)}
+                                      className="text-red-500 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors ml-auto shrink-0 flex items-center justify-center cursor-pointer"
+                                      title="Löschen"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
+                  /* Filtered or Searched view */
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {filteredStones.map((s) => {
+                    {filteredStones.map((s, idx) => {
                       const hasImage = s.image && s.image.trim() !== '';
                       const imageUrl = hasImage
                         ? (s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`)
                         : '';
+                      const mat = getStoneMaterial(s);
+                      const nextMat: 'natur' | 'dekton' | 'neolith' = 
+                        mat === 'natur' ? 'dekton' : mat === 'dekton' ? 'neolith' : 'natur';
+                      const matBadgeClass = 
+                        mat === 'dekton'
+                          ? 'bg-red-500 hover:bg-red-600'
+                          : mat === 'neolith'
+                          ? 'bg-orange-500 hover:bg-orange-600'
+                          : 'bg-emerald-500 hover:bg-emerald-600';
+                      const matLabel =
+                        mat === 'dekton' ? 'Dekton' : mat === 'neolith' ? 'Neolith' : 'Naturstein';
+
                       return (
                         <div
-                          key={s.id}
+                          key={`admin-filtered-${s.id || idx}-${idx}`}
                           className="p-3 bg-white dark:bg-zinc-900 rounded-xl border border-slate-200 dark:border-zinc-800/80 flex items-center gap-3 transition-all hover:border-slate-300 dark:hover:border-slate-700 min-w-0 overflow-hidden shadow-xs"
                         >
                           {/* Thumbnail */}
@@ -1915,17 +2389,24 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                               </div>
                               
                               <button
-                                onClick={() => onUpdateStone(s.id, 'isDekton', !s.isDekton)}
-                                className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase transition-all w-20 shrink-0 active:scale-95 text-white ${
-                                  (s.isDekton === true || s.isDekton === 'true') ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'
-                                }`}
+                                onClick={() => {
+                                  if (onUpdateStoneMaterial) {
+                                    onUpdateStoneMaterial(s.id, nextMat);
+                                  } else {
+                                    onUpdateStone(s.id, 'materialType', nextMat);
+                                    onUpdateStone(s.id, 'isDekton', nextMat === 'dekton');
+                                    onUpdateStone(s.id, 'isNeolith', nextMat === 'neolith');
+                                  }
+                                }}
+                                title="Klicken zum Umschalten (Naturstein / Dekton / Neolith)"
+                                className={`text-[8px] font-black px-2 py-1 rounded-lg uppercase transition-all w-20 shrink-0 active:scale-95 text-white cursor-pointer ${matBadgeClass}`}
                               >
-                                {(s.isDekton === true || s.isDekton === 'true') ? 'Dekton' : 'Naturstein'}
+                                {matLabel}
                               </button>
                               
                               <button
                                 onClick={() => onDeleteStone(s.id)}
-                                className="text-red-500 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors ml-auto shrink-0 flex items-center justify-center"
+                                className="text-red-500 hover:text-red-600 p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors ml-auto shrink-0 flex items-center justify-center cursor-pointer"
                                 title="Löschen"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1942,12 +2423,230 @@ export const AdminTab: React.FC<AdminTabProps> = ({
               {/* Footer */}
               <div className="p-4 border-t border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900/50 flex items-center justify-end shrink-0">
                 <button
+                  type="button"
                   onClick={() => setIsMaterialCatalogOpen(false)}
                   className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-zinc-800 dark:hover:bg-zinc-750 rounded-xl text-xs font-bold uppercase tracking-widest transition-all cursor-pointer"
                 >
                   Schließen
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal: Neues Material anlegen Pop-Up */}
+      <AnimatePresence>
+        {isAddStoneModalOpen && (
+          <div key="add-stone-modal-wrapper" className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              key="add-stone-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddStoneModalOpen(false)}
+              className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs"
+            />
+
+            {/* Modal Dialog */}
+            <motion.div
+              key="add-stone-dialog"
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl relative overflow-hidden z-10"
+            >
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 dark:border-zinc-800 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                    <PlusCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase text-slate-800 dark:text-white tracking-wider">
+                      Neues Material anlegen
+                    </h3>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Material zur Kalkulations-Datenbank hinzufügen
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAddStoneModalOpen(false)}
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Form Content */}
+              <form onSubmit={handleAddStoneSubmit} className="p-5 space-y-4">
+                {/* 1. Name */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-1.5">
+                    Material-Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    placeholder="z.B. Calacatta Gold, Nero Assoluto, Aura 15..."
+                    value={newStoneName}
+                    onChange={(e) => {
+                      setNewStoneName(e.target.value);
+                      if (addStoneError) setAddStoneError('');
+                    }}
+                    className={`w-full bg-slate-50 dark:bg-zinc-950 border ${addStoneError ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200 dark:border-zinc-800'} rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all`}
+                  />
+                  {addStoneError && (
+                    <p className="text-[10px] font-bold text-red-500 mt-1">{addStoneError}</p>
+                  )}
+                </div>
+
+                {/* 2. Steinart / Kategorie */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-1.5">
+                    Steinart / Kategorie <span className="text-red-500">*</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Naturstein */}
+                    <button
+                      type="button"
+                      onClick={() => setNewStoneMaterial('natur')}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        newStoneMaterial === 'natur'
+                          ? 'border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-300 ring-1 ring-emerald-500'
+                          : 'border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 bg-slate-50/50 dark:bg-zinc-950 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                        {newStoneMaterial === 'natur' && <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider block">Naturstein</span>
+                      <span className="text-[9px] text-slate-400">Granit, Quarzit...</span>
+                    </button>
+
+                    {/* Dekton - ROT */}
+                    <button
+                      type="button"
+                      onClick={() => setNewStoneMaterial('dekton')}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        newStoneMaterial === 'dekton'
+                          ? 'border-red-500 bg-red-50/60 dark:bg-red-950/30 text-red-900 dark:text-red-300 ring-1 ring-red-500'
+                          : 'border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 bg-slate-50/50 dark:bg-zinc-950 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
+                        {newStoneMaterial === 'dekton' && <Check className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />}
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider block">Dekton</span>
+                      <span className="text-[9px] text-slate-400">Ultra-kompakt</span>
+                    </button>
+
+                    {/* Neolith - ORANGE */}
+                    <button
+                      type="button"
+                      onClick={() => setNewStoneMaterial('neolith')}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        newStoneMaterial === 'neolith'
+                          ? 'border-orange-500 bg-orange-50/60 dark:bg-orange-950/30 text-orange-900 dark:text-orange-300 ring-1 ring-orange-500'
+                          : 'border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 bg-slate-50/50 dark:bg-zinc-950 text-slate-600 dark:text-slate-400'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full mb-1">
+                        <span className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                        {newStoneMaterial === 'neolith' && <Check className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400" />}
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-wider block">Neolith</span>
+                      <span className="text-[9px] text-slate-400">Sinterkeramik</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Einkaufspreis (EK) */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-1.5">
+                    Einkaufspreis (EK) in € / m²
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">€</span>
+                    <input
+                      type="number"
+                      step="any"
+                      min="0"
+                      placeholder="0.00"
+                      value={newStonePrice}
+                      onChange={(e) => setNewStonePrice(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl pl-8 pr-20 py-2.5 text-xs font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+                    />
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] font-bold uppercase text-slate-400 pointer-events-none">
+                      EUR / m²
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. Dateiname / Bild-URL mit Vorschau */}
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-wider text-slate-600 dark:text-slate-400 block mb-1.5">
+                    Dateiname oder Bild-URL (optional)
+                  </label>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 space-y-1">
+                      <input
+                        type="text"
+                        placeholder="z.B. calacatta.jpg oder https://..."
+                        value={newStoneImage}
+                        onChange={(e) => setNewStoneImage(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-blue-500 transition-all"
+                      />
+                      <p className="text-[9px] text-slate-400 leading-tight">
+                        Dateiname im Projektordner <code className="text-blue-500 font-mono">public/images/</code> oder vollständige Bild-URL.
+                      </p>
+                    </div>
+
+                    {/* Image Preview Box */}
+                    <div className="w-14 h-14 rounded-xl border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-950 overflow-hidden shrink-0 flex items-center justify-center">
+                      {newStoneImage.trim() ? (
+                        <img
+                          src={newStoneImage.trim().startsWith('http') || newStoneImage.trim().startsWith('data:') ? newStoneImage.trim() : `images/${newStoneImage.trim()}`}
+                          alt="Vorschau"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fallback = e.currentTarget.parentElement?.querySelector('.new-stone-img-fallback');
+                            if (fallback) fallback.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`new-stone-img-fallback text-[8px] font-bold text-slate-400 uppercase text-center leading-tight ${newStoneImage.trim() ? 'hidden' : ''}`}>
+                        Kein<br />Bild
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Modal Actions */}
+                <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddStoneModalOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-550 text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md shadow-blue-600/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Check className="w-4 h-4" />
+                    Material anlegen
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

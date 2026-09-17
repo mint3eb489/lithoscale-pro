@@ -1,5 +1,5 @@
 import React from 'react';
-import { Stone, AppConfig } from '../types';
+import { Stone, AppConfig, getStoneMaterial } from '../types';
 import { Sparkles, Maximize2, Scale } from 'lucide-react';
 
 interface GalleryTabProps {
@@ -36,14 +36,14 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(rounded);
   };
 
-  const renderCard = (s: Stone) => {
+  const renderCard = (s: Stone, idx?: number) => {
     const isComparing = compareList.includes(s.id);
     const isActive = s.id === selectedStoneId;
     const hasImage = s.image && s.image.trim() !== '';
 
     return (
       <div
-        key={s.id}
+        key={`gallery-stone-${s.id || 'st'}-${idx ?? 0}`}
         className={`card gallery-card overflow-hidden group cursor-pointer transition-all duration-300 relative ${
           isActive ? 'border-emerald-500 ring-2 ring-emerald-500/25 shadow-md' : isComparing ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-lg scale-[0.98]' : 'hover:shadow-lg'
         }`}
@@ -112,8 +112,9 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
     );
   };
 
-  const dektonStones = sortedStones.filter(s => s.isDekton);
-  const naturStones = sortedStones.filter(s => !s.isDekton);
+  const dektonStones = sortedStones.filter(s => getStoneMaterial(s) === 'dekton');
+  const neolithStones = sortedStones.filter(s => getStoneMaterial(s) === 'neolith');
+  const naturStones = sortedStones.filter(s => getStoneMaterial(s) === 'natur');
 
   const activeStats = personalStats || config.stats || { dekton: [], natur: [] };
 
@@ -154,12 +155,25 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {dektonStones.length > 0 ? (
-            dektonStones.map(renderCard)
+            dektonStones.map((s, idx) => renderCard(s, idx))
           ) : (
             <p className="text-sm text-slate-500 col-span-full">Keine Dekton Steine vorhanden.</p>
           )}
         </div>
       </div>
+
+      {neolithStones.length > 0 && (
+        <div>
+          <div className="mb-6 flex items-center mt-12 border-t border-slate-200 dark:border-darkBorder pt-10">
+            <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-orange-500 text-white shadow-xs">
+              Neolith
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+            {neolithStones.map((s, idx) => renderCard(s, idx))}
+          </div>
+        </div>
+      )}
 
       <div>
         <div className="mb-6 flex items-center mt-12 border-t border-slate-200 dark:border-darkBorder pt-10">
@@ -169,7 +183,7 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           {naturStones.length > 0 ? (
-            naturStones.map(renderCard)
+            naturStones.map((s, idx) => renderCard(s, idx))
           ) : (
             <p className="text-sm text-slate-500 col-span-full">Keine Natursteine vorhanden.</p>
           )}
