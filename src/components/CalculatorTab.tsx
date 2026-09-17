@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Stone, AppConfig, Part, SavedCalculation, getStoneMaterial, getStoneMaterialLabel } from '../types';
+import { resolveStoneImageUrl } from '../utils/imageUtils';
 import { Plus, X, ArrowUpCircle, Scale, Eye, Layers, ArrowDownToLine, ArrowUpFromLine, Scissors, CircleDot, ChevronDown, Search, Bookmark, Save, Trash2, Download, Cloud, TrendingUp } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
@@ -431,7 +432,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
             >
               {selectedStone?.image ? (
                 <img
-                  src={selectedStone.image.startsWith('http') || selectedStone.image.startsWith('data:') ? selectedStone.image : `images/${selectedStone.image}`}
+                  src={resolveStoneImageUrl(selectedStone.image)}
                   alt={selectedStone.name}
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
@@ -504,7 +505,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                     <div className="w-12 h-12 rounded-lg border border-slate-200 dark:border-darkBorder overflow-hidden bg-slate-50 dark:bg-black shrink-0 flex items-center justify-center">
                       {selectedStone?.image ? (
                         <img
-                          src={selectedStone.image.startsWith('http') || selectedStone.image.startsWith('data:') ? selectedStone.image : `images/${selectedStone.image}`}
+                          src={resolveStoneImageUrl(selectedStone.image)}
                           alt={selectedStone.name}
                           className="w-full h-full object-cover"
                         />
@@ -601,7 +602,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
                                 <div className="w-12 h-12 rounded-lg border border-slate-200 dark:border-darkBorder overflow-hidden bg-slate-50 dark:bg-black shrink-0 flex items-center justify-center">
                                   {s.image ? (
                                     <img
-                                      src={s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`}
+                                      src={resolveStoneImageUrl(s.image)}
                                       alt={s.name}
                                       className="w-full h-full object-cover"
                                     />

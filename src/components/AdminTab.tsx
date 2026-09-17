@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Berater, UserProfile, getBlancoChoiceArticleList, getStoneMaterial, StoneMaterialType } from '../types';
+import { resolveStoneImageUrl } from '../utils/imageUtils';
 import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown, Percent, Tag, PlusCircle, Check, ListPlus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -2010,9 +2011,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {stones.filter(s => getStoneMaterial(s) === 'neolith').map((s, idx) => {
                             const hasImage = s.image && s.image.trim() !== '';
-                            const imageUrl = hasImage
-                              ? (s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`)
-                              : '';
+                            const imageUrl = resolveStoneImageUrl(s.image);
                             const mat = getStoneMaterial(s);
                             const nextMat: 'natur' | 'dekton' | 'neolith' = 
                               mat === 'natur' ? 'dekton' : mat === 'dekton' ? 'neolith' : 'natur';
@@ -2119,9 +2118,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {stones.filter(s => getStoneMaterial(s) === 'dekton').map((s, idx) => {
                             const hasImage = s.image && s.image.trim() !== '';
-                            const imageUrl = hasImage
-                              ? (s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`)
-                              : '';
+                            const imageUrl = resolveStoneImageUrl(s.image);
                             const mat = getStoneMaterial(s);
                             const nextMat: 'natur' | 'dekton' | 'neolith' = 
                               mat === 'natur' ? 'dekton' : mat === 'dekton' ? 'neolith' : 'natur';
@@ -2228,9 +2225,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {stones.filter(s => getStoneMaterial(s) === 'natur').map((s, idx) => {
                             const hasImage = s.image && s.image.trim() !== '';
-                            const imageUrl = hasImage
-                              ? (s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`)
-                              : '';
+                            const imageUrl = resolveStoneImageUrl(s.image);
                             const mat = getStoneMaterial(s);
                             const nextMat: 'natur' | 'dekton' | 'neolith' = 
                               mat === 'natur' ? 'dekton' : mat === 'dekton' ? 'neolith' : 'natur';
@@ -2320,9 +2315,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {filteredStones.map((s, idx) => {
                       const hasImage = s.image && s.image.trim() !== '';
-                      const imageUrl = hasImage
-                        ? (s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`)
-                        : '';
+                      const imageUrl = resolveStoneImageUrl(s.image);
                       const mat = getStoneMaterial(s);
                       const nextMat: 'natur' | 'dekton' | 'neolith' = 
                         mat === 'natur' ? 'dekton' : mat === 'dekton' ? 'neolith' : 'natur';

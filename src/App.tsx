@@ -11,6 +11,7 @@ import { KitchenTab } from './components/KitchenTab';
 import { AdminTab } from './components/AdminTab';
 import { generateKitchenPDF } from './utils/pdfGenerator';
 import { resolveBeraterId, resolveBeraterName, findBeraterUser } from './utils/beraterUtils';
+import { resolveStoneImageUrl } from './utils/imageUtils';
 import { Cloud, Check, ShieldAlert, KeyRound, Search, X, Folder, FolderOpen, Plus, Trash2, Pencil, ChevronDown, ChevronUp, History, Download, Eye } from 'lucide-react';
 
 const generateId = () => 'st_' + Math.random().toString(36).substr(2, 9);
@@ -2750,7 +2751,7 @@ export default function App() {
                           <div className="flex items-center gap-4 text-left border-b border-slate-200 dark:border-zinc-800/80 pb-4">
                             <div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-black border border-slate-200 dark:border-darkBorder shadow-sm shrink-0 relative">
                               {s.image ? (
-                                <img src={s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`} className="w-full h-full object-cover" alt="" />
+                                <img src={resolveStoneImageUrl(s.image)} className="w-full h-full object-cover" alt="" />
                               ) : (
                                 <span className="text-[9px] text-slate-400 font-extrabold uppercase">Kein Bild</span>
                               )}
@@ -2828,7 +2829,7 @@ export default function App() {
             onClick={() => setLightboxOpen(false)}
           >
             <img
-              src={lightboxImg.startsWith('http') || lightboxImg.startsWith('data:') ? lightboxImg : `images/${lightboxImg}`}
+              src={resolveStoneImageUrl(lightboxImg)}
               className="max-w-full max-h-full rounded-2xl shadow-2xl transition-transform duration-300 object-contain"
               alt=""
             />

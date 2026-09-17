@@ -1,5 +1,6 @@
 import React from 'react';
 import { Stone, AppConfig, getStoneMaterial } from '../types';
+import { resolveStoneImageUrl } from '../utils/imageUtils';
 import { Sparkles, Maximize2, Scale } from 'lucide-react';
 
 interface GalleryTabProps {
@@ -52,7 +53,7 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
         <div className="aspect-square bg-slate-100 dark:bg-black relative overflow-hidden flex items-center justify-center border-b border-slate-200 dark:border-darkBorder">
           {hasImage ? (
             <img
-              src={s.image.startsWith('http') || s.image.startsWith('data:') ? s.image : `images/${s.image}`}
+              src={resolveStoneImageUrl(s.image)}
               className={`w-full h-full object-cover transition-transform duration-700 ${isActive ? 'scale-105' : 'group-hover:scale-110'}`}
               loading="lazy"
               alt={s.name}
