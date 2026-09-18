@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Stone, AppConfig, getStoneMaterial } from '../types';
 import { resolveStoneImageUrl } from '../utils/imageUtils';
 import { Sparkles, Maximize2, Scale } from 'lucide-react';
@@ -13,6 +13,7 @@ interface GalleryTabProps {
   personalStats?: {
     dekton?: number[];
     natur?: number[];
+    neolith?: number[];
   };
   selectedStoneId?: string;
 }
@@ -27,14 +28,20 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
   personalStats,
   selectedStoneId,
 }) => {
+  const [activeFilter, setActiveFilter] = useState<'all' | 'dekton' | 'neolith' | 'natur'>('all');
+
   const sortedStones = [...stones].sort((a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
 
-  const formatTrend = (arr: number[]) => {
+  const formatTrend = (arr?: number[]) => {
     if (!arr || arr.length === 0) return '--- €';
     const sum = arr.reduce((a, b) => a + b, 0);
     const avg = sum / arr.length;
     const rounded = Math.round(avg / 10) * 10;
     return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(rounded);
+  };
+
+  const handleToggleFilter = (filter: 'dekton' | 'neolith' | 'natur') => {
+    setActiveFilter((prev) => (prev === filter ? 'all' : filter));
   };
 
   const renderCard = (s: Stone, idx?: number) => {
@@ -113,83 +120,162 @@ export const GalleryTab: React.FC<GalleryTabProps> = ({
     );
   };
 
-  const dektonStones = sortedStones.filter(s => getStoneMaterial(s) === 'dekton');
-  const neolithStones = sortedStones.filter(s => getStoneMaterial(s) === 'neolith');
-  const naturStones = sortedStones.filter(s => getStoneMaterial(s) === 'natur');
+  const dektonStones = sortedStones.filter((s) => getStoneMaterial(s) === 'dekton');
+  const neolithStones = sortedStones.filter((s) => getStoneMaterial(s) === 'neolith');
+  const naturStones = sortedStones.filter((s) => getStoneMaterial(s) === 'natur');
 
-  const activeStats = personalStats || config.stats || { dekton: [], natur: [] };
+  const activeStats = personalStats || config.stats || { dekton: [], natur: [], neolith: [] };
+
+  const showDekton = activeFilter === 'all' || activeFilter === 'dekton';
+  const showNeolith = activeFilter === 'all' || activeFilter === 'neolith';
+  const showNatur = activeFilter === 'all' || activeFilter === 'natur';
 
   return (
     <div id="tab-gallery" className="pb-20 space-y-6 sm:space-y-10 relative">
-      {/* Markttrends: Sehr kompakte, schlanke Ansicht auf Mobile mit Dekton & Naturstein Badges */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-6 mt-1">
-        {/* Trend Card 1: Dekton */}
-        <div className="bg-white dark:bg-[#121212] px-3 py-2 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-[#262626] flex sm:flex-col items-center sm:items-stretch justify-between sm:justify-center text-left sm:text-center shadow-xs">
-          <div className="flex items-center sm:justify-center">
-            <span className="px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-widest bg-red-500 text-white shadow-xs">
-              Dekton
-            </span>
-          </div>
-          <p id="trend-dekton" className="text-xs sm:text-xl font-black text-slate-800 dark:text-slate-100 font-mono tracking-tight">
-            {formatTrend(activeStats.dekton || [])}
-          </p>
-        </div>
-
-        {/* Trend Card 2: Naturstein */}
-        <div className="bg-white dark:bg-[#121212] px-3 py-2 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-[#262626] flex sm:flex-col items-center sm:items-stretch justify-between sm:justify-center text-left sm:text-center shadow-xs">
-          <div className="flex items-center sm:justify-center">
-            <span className="px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-black uppercase tracking-widest bg-emerald-500 text-white shadow-xs">
+      {/* Markttrends / Filter-Leiste: 3 Spalten (Naturstein, Dekton, Neolith) mobil & desktop optimiert */}
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-4 md:gap-6 mt-1">
+        {/* Trend Card 1: Naturstein */}
+        <button
+          type="button"
+          onClick={() => handleToggleFilter('natur')}
+          className={`px-2 py-2.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer select-none active:scale-[0.98] ${
+            activeFilter === 'natur'
+              ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-500 ring-2 ring-emerald-500/40 shadow-md'
+              : activeFilter !== 'all'
+              ? 'bg-white/60 dark:bg-[#121212]/60 border-slate-200/60 dark:border-[#262626]/60 opacity-60 hover:opacity-100 hover:border-slate-300 dark:hover:border-zinc-700'
+              : 'bg-white dark:bg-[#121212] border-slate-200 dark:border-[#262626] hover:border-emerald-400/50 dark:hover:border-emerald-500/40 hover:shadow-xs'
+          }`}
+          title={activeFilter === 'natur' ? 'Filter aufheben (alle anzeigen)' : 'Nach Naturstein filtern'}
+        >
+          <div className="flex items-center gap-1 justify-center mb-1">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[7.5px] sm:text-[9px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-xs whitespace-nowrap">
               Naturstein
             </span>
+            {activeFilter === 'natur' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 hidden xs:inline-block" />
+            )}
           </div>
-          <p id="trend-natur" className="text-xs sm:text-xl font-black text-slate-800 dark:text-slate-100 font-mono tracking-tight">
+          <p id="trend-natur" className="text-[11px] xs:text-xs sm:text-xl font-black text-slate-800 dark:text-slate-100 font-mono tracking-tight truncate w-full">
             {formatTrend(activeStats.natur || [])}
           </p>
-        </div>
-      </div>
+        </button>
 
-      <div>
-        <div className="mb-6 flex items-center">
-          <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-red-500 text-white shadow-xs">
-            Dekton
-          </span>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {dektonStones.length > 0 ? (
-            dektonStones.map((s, idx) => renderCard(s, idx))
-          ) : (
-            <p className="text-sm text-slate-500 col-span-full">Keine Dekton Steine vorhanden.</p>
-          )}
-        </div>
-      </div>
+        {/* Trend Card 2: Dekton */}
+        <button
+          type="button"
+          onClick={() => handleToggleFilter('dekton')}
+          className={`px-2 py-2.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer select-none active:scale-[0.98] ${
+            activeFilter === 'dekton'
+              ? 'bg-red-50 dark:bg-red-950/30 border-red-500 ring-2 ring-red-500/40 shadow-md'
+              : activeFilter !== 'all'
+              ? 'bg-white/60 dark:bg-[#121212]/60 border-slate-200/60 dark:border-[#262626]/60 opacity-60 hover:opacity-100 hover:border-slate-300 dark:hover:border-zinc-700'
+              : 'bg-white dark:bg-[#121212] border-slate-200 dark:border-[#262626] hover:border-red-400/50 dark:hover:border-red-500/40 hover:shadow-xs'
+          }`}
+          title={activeFilter === 'dekton' ? 'Filter aufheben (alle anzeigen)' : 'Nach Dekton filtern'}
+        >
+          <div className="flex items-center gap-1 justify-center mb-1">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[7.5px] sm:text-[9px] font-black uppercase tracking-wider bg-red-500 text-white shadow-xs whitespace-nowrap">
+              Dekton
+            </span>
+            {activeFilter === 'dekton' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0 hidden xs:inline-block" />
+            )}
+          </div>
+          <p id="trend-dekton" className="text-[11px] xs:text-xs sm:text-xl font-black text-slate-800 dark:text-slate-100 font-mono tracking-tight truncate w-full">
+            {formatTrend(activeStats.dekton || [])}
+          </p>
+        </button>
 
-      {neolithStones.length > 0 && (
-        <div>
-          <div className="mb-6 flex items-center mt-12 border-t border-slate-200 dark:border-darkBorder pt-10">
-            <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-orange-500 text-white shadow-xs">
+        {/* Trend Card 3: Neolith */}
+        <button
+          type="button"
+          onClick={() => handleToggleFilter('neolith')}
+          className={`px-2 py-2.5 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer select-none active:scale-[0.98] ${
+            activeFilter === 'neolith'
+              ? 'bg-orange-50 dark:bg-orange-950/30 border-orange-500 ring-2 ring-orange-500/40 shadow-md'
+              : activeFilter !== 'all'
+              ? 'bg-white/60 dark:bg-[#121212]/60 border-slate-200/60 dark:border-[#262626]/60 opacity-60 hover:opacity-100 hover:border-slate-300 dark:hover:border-zinc-700'
+              : 'bg-white dark:bg-[#121212] border-slate-200 dark:border-[#262626] hover:border-orange-400/50 dark:hover:border-orange-500/40 hover:shadow-xs'
+          }`}
+          title={activeFilter === 'neolith' ? 'Filter aufheben (alle anzeigen)' : 'Nach Neolith filtern'}
+        >
+          <div className="flex items-center gap-1 justify-center mb-1">
+            <span className="px-1.5 sm:px-2 py-0.5 rounded text-[7.5px] sm:text-[9px] font-black uppercase tracking-wider bg-orange-500 text-white shadow-xs whitespace-nowrap">
               Neolith
             </span>
+            {activeFilter === 'neolith' && (
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shrink-0 hidden xs:inline-block" />
+            )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-            {neolithStones.map((s, idx) => renderCard(s, idx))}
+          <p id="trend-neolith" className="text-[11px] xs:text-xs sm:text-xl font-black text-slate-800 dark:text-slate-100 font-mono tracking-tight truncate w-full">
+            {formatTrend(activeStats.neolith || [])}
+          </p>
+        </button>
+      </div>
+
+      {/* Sektion 1: Naturstein */}
+      {showNatur && (
+        <div>
+          <div className="mb-4 sm:mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-emerald-500 text-white shadow-xs">
+                Naturstein
+              </span>
+              <span className="text-xs text-slate-400 font-mono">({naturStones.length})</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+            {naturStones.length > 0 ? (
+              naturStones.map((s, idx) => renderCard(s, idx))
+            ) : (
+              <p className="text-sm text-slate-500 col-span-full italic py-4">Keine Natursteine vorhanden.</p>
+            )}
           </div>
         </div>
       )}
 
-      <div>
-        <div className="mb-6 flex items-center mt-12 border-t border-slate-200 dark:border-darkBorder pt-10">
-          <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-emerald-500 text-white shadow-xs">
-            Naturstein
-          </span>
+      {/* Sektion 2: Dekton */}
+      {showDekton && (
+        <div className={activeFilter === 'all' && showNatur ? 'mt-10 sm:mt-12 border-t border-slate-200 dark:border-darkBorder pt-8 sm:pt-10' : ''}>
+          <div className="mb-4 sm:mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-red-500 text-white shadow-xs">
+                Dekton
+              </span>
+              <span className="text-xs text-slate-400 font-mono">({dektonStones.length})</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+            {dektonStones.length > 0 ? (
+              dektonStones.map((s, idx) => renderCard(s, idx))
+            ) : (
+              <p className="text-sm text-slate-500 col-span-full italic py-4">Keine Dekton Steine vorhanden.</p>
+            )}
+          </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          {naturStones.length > 0 ? (
-            naturStones.map((s, idx) => renderCard(s, idx))
-          ) : (
-            <p className="text-sm text-slate-500 col-span-full">Keine Natursteine vorhanden.</p>
-          )}
+      )}
+
+      {/* Sektion 3: Neolith */}
+      {showNeolith && (
+        <div className={activeFilter === 'all' && (showNatur || showDekton) ? 'mt-10 sm:mt-12 border-t border-slate-200 dark:border-darkBorder pt-8 sm:pt-10' : ''}>
+          <div className="mb-4 sm:mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-lg text-xs md:text-sm font-black uppercase tracking-widest bg-orange-500 text-white shadow-xs">
+                Neolith
+              </span>
+              <span className="text-xs text-slate-400 font-mono">({neolithStones.length})</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+            {neolithStones.length > 0 ? (
+              neolithStones.map((s, idx) => renderCard(s, idx))
+            ) : (
+              <p className="text-sm text-slate-500 col-span-full italic py-4">Keine Neolith Steine vorhanden.</p>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
+

@@ -2,10 +2,12 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
     <title>LithoScale Pro</title>
     
     <!-- App Icons & Manifest -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
@@ -13,7 +15,36 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" id="status-bar-meta" />
-    <meta name="theme-color" content="#f8fafc" id="theme-color-meta" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#faf8f5" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+    <meta name="theme-color" content="#faf8f5" id="theme-color-meta" />
+
+    <!-- Immediate theme initializer to prevent white status bar or flash on iOS Dynamic Island -->
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('ls_theme');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = saved === 'dark' || (!saved && prefersDark);
+          var docEl = document.documentElement;
+          var themeMeta = document.getElementById('theme-color-meta');
+          var statusMeta = document.getElementById('status-bar-meta');
+          if (isDark) {
+            docEl.classList.add('dark');
+            docEl.style.colorScheme = 'dark';
+            docEl.style.backgroundColor = '#000000';
+            if (themeMeta) themeMeta.setAttribute('content', '#000000');
+            if (statusMeta) statusMeta.setAttribute('content', 'black-translucent');
+          } else {
+            docEl.classList.remove('dark');
+            docEl.style.colorScheme = 'light';
+            docEl.style.backgroundColor = '#faf8f5';
+            if (themeMeta) themeMeta.setAttribute('content', '#faf8f5');
+            if (statusMeta) statusMeta.setAttribute('content', 'default');
+          }
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

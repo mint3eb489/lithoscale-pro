@@ -71,6 +71,7 @@ export interface AppConfig {
   stats: {
     dekton: number[];
     natur: number[];
+    neolith?: number[];
   };
   beraterList: Berater[];
   pdfLogo: string;
@@ -190,6 +191,7 @@ export interface UserProfile {
   stats?: {
     dekton?: number[];
     natur?: number[];
+    neolith?: number[];
   };
   customFactors?: {
     factor?: number; // VK-Faktor für Steine
@@ -280,7 +282,7 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
     moebelFactor: 2.0,
     maxRabattMoebel: 5,
     maxRabattMiele: 3,
-    stats: { dekton: [], natur: [] },
+    stats: { dekton: [], natur: [], neolith: [] },
     beraterList: [
       { id: 1, name: "Max Müller", email: "max@musterfirma.de", phone: "01234 56789" },
       { id: 2, name: "Lisa Schmidt", email: "lisa@musterfirma.de", phone: "09876 54321" }

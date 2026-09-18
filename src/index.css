@@ -2,6 +2,38 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+:root {
+  color-scheme: light;
+  background-color: #faf8f5;
+}
+
+:root.dark,
+html.dark {
+  color-scheme: dark;
+  background-color: #000000;
+}
+
+html {
+  background-color: #faf8f5;
+  color-scheme: light;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.dark {
+  background-color: #000000;
+  color-scheme: dark;
+}
+
+body {
+  background-color: #faf8f5;
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+}
+
+html.dark body {
+  background-color: #000000;
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
