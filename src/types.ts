@@ -75,6 +75,7 @@ export interface AppConfig {
   };
   beraterList: Berater[];
   pdfLogo: string;
+  appLogo?: string;
   pdfKuechenText: string;
   pdfBallerinaText: string;
   pdfAnschlussText: string;
@@ -288,6 +289,7 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
       { id: 2, name: "Lisa Schmidt", email: "lisa@musterfirma.de", phone: "09876 54321" }
     ],
     pdfLogo: "",
+    appLogo: "apple-touch-icon.png",
     pdfKuechenText: "Vielen Dank für Ihren Besuch und das angenehme Planungsgespräch. Wir freuen uns sehr, Ihnen das folgende Angebot für Ihre neue Einbauküche unterbreiten zu dürfen.",
     pdfBallerinaText: "Qualität des Herstellers: Ballerina ist aktuell auf Platz 1 der deutschen Küchenhersteller und überzeugt mit einem robusten Korpus, 8mm starken geschraubten Rückwänden und 19mm starken Fachböden. Ebenso die kostenfreie Möglichkeit der farblichen Gestaltung des Innenkorpus sowie Glaszargen und Anti-Rutschmatten sind bei unseren Kunden sehr beliebt. Alle Schubkästen, Auszüge und Türen sind gedämpft. Die Belastbarkeit beträgt je nach Breite zwischen 50 kg und 80 kg. Ein entsprechendes Qualitäts-Zertifikat ist dieser E-Mail beigefügt.",
     pdfAnschlussText: "Die Anschlüsse für Wasser und Elektro werden separat in Höhe von 240,- EUR mit unserem zertifizierten Monteur vor Ort abgerechnet.",

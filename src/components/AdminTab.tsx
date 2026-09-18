@@ -837,6 +837,18 @@ export const AdminTab: React.FC<AdminTabProps> = ({
             
             <div className="space-y-4">
               <div>
+                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">App Logo Header & Login (URL / Dateiname)</label>
+                <input
+                  type="text"
+                  value={config.appLogo ?? 'apple-touch-icon.png'}
+                  onChange={(e) => onUpdateConfig('appLogo', e.target.value)}
+                  className="input-field input-field-compact text-xs font-mono"
+                  placeholder="apple-touch-icon.png oder https://..."
+                />
+                <p className="text-[8px] text-slate-400 mt-0.5">Wird dynamisch geladen wie Steinbilder (z.B. apple-touch-icon.png, images/logo.png oder GitHub URL)</p>
+              </div>
+
+              <div>
                 <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">PDF Logo (URL / Base64 / Dateiname)</label>
                 <input
                   type="text"

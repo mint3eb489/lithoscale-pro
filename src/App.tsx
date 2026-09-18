@@ -9,7 +9,7 @@ import { CalculatorTab } from './components/CalculatorTab';
 import { GalleryTab } from './components/GalleryTab';
 import { KitchenTab } from './components/KitchenTab';
 import { AdminTab } from './components/AdminTab';
-import { LithoScaleLogo } from './components/LithoScaleLogo';
+import { AppLogo } from './components/AppLogo';
 import { generateKitchenPDF } from './utils/pdfGenerator';
 import { resolveBeraterId, resolveBeraterName, findBeraterUser } from './utils/beraterUtils';
 import { resolveStoneImageUrl } from './utils/imageUtils';
@@ -1951,6 +1951,7 @@ export default function App() {
         
         {/* Navigation / Header */}
         <Navigation
+          appLogo={config.appLogo}
           activeTab={activeTab}
           setActiveTab={handleTabSwitch}
           dark={dark}
@@ -3022,8 +3023,8 @@ export default function App() {
         <div id="login-overlay" className="fixed inset-0 z-[1000] bg-slate-50 dark:bg-[#000000] flex items-center justify-center p-4">
           <div className="card p-8 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] rounded-3xl">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center shadow-lg border border-white/10 mx-auto mb-4 select-none">
-                <LithoScaleLogo className="w-full h-full object-cover" />
+              <div className="w-16 h-16 bg-black dark:bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-lg border border-white/10 mx-auto mb-4">
+                <AppLogo logo={config.appLogo} className="w-full h-full object-cover" alt="LithoScale Pro Logo" />
               </div>
               <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 LithoScale <span className="text-blue-500">PRO</span>
