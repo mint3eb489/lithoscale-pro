@@ -27,8 +27,19 @@ export const Navigation: React.FC<NavigationProps> = ({
       {/* LEFT AREA: aligned with Configuration (lg:col-span-3) */}
       <div className="lg:col-span-3 flex flex-row justify-between items-center gap-2 sm:gap-4 w-full">
         <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
-          <div className="w-12 h-12 sm:w-13 sm:h-13 md:w-14 md:h-14 bg-black dark:bg-white rounded-xl sm:rounded-2xl overflow-hidden flex items-center justify-center shadow-md sm:shadow-2xl border border-white/10 shrink-0">
-            <img src="/apple-touch-icon.png" className="w-full h-full object-cover" alt="LithoScale Pro Logo" referrerPolicy="no-referrer" />
+          <div className="w-12 h-12 sm:w-13 sm:h-13 md:w-14 md:h-14 bg-slate-900 rounded-xl sm:rounded-2xl overflow-hidden flex items-center justify-center shadow-md sm:shadow-2xl border border-white/10 shrink-0">
+            <img 
+              src="/favicon.svg" 
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (!target.src.endsWith('/apple-touch-icon.png')) {
+                  target.src = '/apple-touch-icon.png';
+                }
+              }}
+              className="w-full h-full object-cover" 
+              alt="LithoScale Pro Logo" 
+              referrerPolicy="no-referrer" 
+            />
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
             <h1 className="text-[21px] sm:text-2xl md:text-3xl font-black flex items-center tracking-tighter select-none text-slate-900 dark:text-white truncate">
