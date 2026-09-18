@@ -259,28 +259,36 @@ export default function App() {
     localStorage.setItem('ls_kitchen', JSON.stringify(kitchen));
   }, [kitchen]);
 
-  // Handle Dark mode toggle
+  // Handle Dark mode toggle & iOS status bar / Dynamic Island synchronization
   useEffect(() => {
-    const themeColorMeta = document.querySelector('meta[name="theme-color"]') || document.createElement('meta');
-    themeColorMeta.setAttribute('name', 'theme-color');
+    const isDark = dark;
+    const themeColor = isDark ? '#000000' : '#faf8f5';
+    const statusBarStyle = isDark ? 'black' : 'default';
 
+    // Update all theme-color meta tags so iOS Safari / Chrome always match
+    const themeMetas = document.querySelectorAll('meta[name="theme-color"]');
+    if (themeMetas.length > 0) {
+      themeMetas.forEach((meta) => meta.setAttribute('content', themeColor));
+    } else {
+      const meta = document.createElement('meta');
+      meta.setAttribute('name', 'theme-color');
+      meta.setAttribute('content', themeColor);
+      document.head.appendChild(meta);
+    }
+
+    // Update apple-mobile-web-app-status-bar-style
     const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') || document.createElement('meta');
     statusBarMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
+    statusBarMeta.setAttribute('content', statusBarStyle);
+    if (!statusBarMeta.parentElement) document.head.appendChild(statusBarMeta);
 
-    if (dark) {
+    if (isDark) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('ls_theme', 'dark');
-      themeColorMeta.setAttribute('content', '#000000');
-      statusBarMeta.setAttribute('content', 'black-translucent');
     } else {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('ls_theme', 'light');
-      themeColorMeta.setAttribute('content', '#f8fafc');
-      statusBarMeta.setAttribute('content', 'default');
     }
-
-    if (!themeColorMeta.parentElement) document.head.appendChild(themeColorMeta);
-    if (!statusBarMeta.parentElement) document.head.appendChild(statusBarMeta);
   }, [dark]);
 
   // Auth synchronization subscriptions
@@ -1944,8 +1952,16 @@ export default function App() {
     .filter((f): f is string => typeof f === 'string' && f.trim().length > 0 && f !== '__NEW__');
 
   return (
-    <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans w-full max-w-full overflow-x-hidden">
+    <div className="px-3 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans w-full max-w-full overflow-x-hidden">
       
+      {/* iOS Dynamic Island & Statusleiste Schutz / dezenter Blur-Übergang beim Hochscrollen */}
+      <div 
+        aria-hidden="true"
+        className="fixed top-0 left-0 right-0 z-40 pointer-events-none transition-colors duration-200 h-[env(safe-area-inset-top,0px)] bg-slate-50/95 dark:bg-black/95 backdrop-blur-[2px]"
+      >
+        <div className="absolute top-full left-0 right-0 h-2 bg-gradient-to-b from-slate-50/95 to-transparent dark:from-black/95 pointer-events-none" />
+      </div>
+
       <div id="app" className="max-w-4xl mx-auto relative w-full">
         
         {/* Navigation / Header */}

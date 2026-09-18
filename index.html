@@ -2,7 +2,7 @@
 <html lang="de">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>LithoScale Pro</title>
     
     <!-- App Icons & Manifest -->
@@ -14,7 +14,31 @@
     
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" id="status-bar-meta" />
-    <meta name="theme-color" content="#f8fafc" id="theme-color-meta" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#faf8f5" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000" />
+    <meta name="theme-color" content="#faf8f5" id="theme-color-meta" />
+
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('ls_theme');
+          var isDark = saved === 'dark' || (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+            var tc = document.getElementById('theme-color-meta');
+            if (tc) tc.setAttribute('content', '#000000');
+            var sb = document.getElementById('status-bar-meta');
+            if (sb) sb.setAttribute('content', 'black');
+          } else {
+            document.documentElement.classList.remove('dark');
+            var tc = document.getElementById('theme-color-meta');
+            if (tc) tc.setAttribute('content', '#faf8f5');
+            var sb = document.getElementById('status-bar-meta');
+            if (sb) sb.setAttribute('content', 'default');
+          }
+        } catch(e) {}
+      })();
+    </script>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
