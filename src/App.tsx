@@ -3035,7 +3035,7 @@ export default function App() {
         <div id="login-overlay" className="fixed inset-0 z-[1000] bg-slate-50 dark:bg-[#000000] flex items-center justify-center p-4">
           <div className="card p-8 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] rounded-3xl">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-[#0f172a] dark:bg-[#0f172a] rounded-2xl overflow-hidden flex items-center justify-center shadow-lg border border-slate-200/80 dark:border-zinc-800/80 mx-auto mb-4">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center shadow-lg mx-auto mb-4">
                 <img 
                   src="/apple-touch-icon.png" 
                   onError={(e) => {

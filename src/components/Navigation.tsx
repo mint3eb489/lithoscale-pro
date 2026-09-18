@@ -27,7 +27,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       {/* LEFT AREA: aligned with Configuration (lg:col-span-3) */}
       <div className="lg:col-span-3 flex flex-row justify-between items-center gap-2 sm:gap-4 w-full">
         <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
-          <div className="w-12 h-12 sm:w-13 sm:h-13 md:w-14 md:h-14 bg-[#0f172a] dark:bg-[#0f172a] rounded-xl sm:rounded-2xl overflow-hidden flex items-center justify-center shadow-md sm:shadow-2xl border border-slate-200/80 dark:border-zinc-800/80 shrink-0">
+          <div className="w-12 h-12 sm:w-13 sm:h-13 md:w-14 md:h-14 rounded-xl sm:rounded-2xl overflow-hidden flex items-center justify-center shadow-md sm:shadow-2xl shrink-0">
             <img 
               src="/apple-touch-icon.png" 
               onError={(e) => {
