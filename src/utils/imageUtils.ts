@@ -28,23 +28,3 @@ export function resolveStoneImageUrl(img?: string | null): string {
 
   return `images/${clean}`;
 }
-
-/**
- * Resolves the app logo URL dynamically.
- * Handles:
- * - Direct external URLs ('https://...', 'http://...', 'data:...')
- * - Relative filenames ('apple-touch-icon.png')
- * - Relative subfolder paths ('images/logo.png', etc.)
- * - Strips unnecessary root slash if needed for relative deployment
- */
-export function resolveAppLogoUrl(logo?: string | null): string {
-  if (!logo || !logo.trim()) {
-    return 'apple-touch-icon.png';
-  }
-  const trimmed = logo.trim();
-  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
-    return trimmed;
-  }
-  // Strip leading slashes to ensure relative path resolution matching stone images
-  return trimmed.replace(/^\/+/, '');
-}
