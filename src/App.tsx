@@ -259,41 +259,27 @@ export default function App() {
     localStorage.setItem('ls_kitchen', JSON.stringify(kitchen));
   }, [kitchen]);
 
-  // Handle Dark mode toggle with native iOS Dynamic Island & Safari status bar support
+  // Handle Dark mode toggle
   useEffect(() => {
-    const themeColorMetas = document.querySelectorAll('meta[name="theme-color"]');
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]') || document.createElement('meta');
+    themeColorMeta.setAttribute('name', 'theme-color');
+
     const statusBarMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]') || document.createElement('meta');
     statusBarMeta.setAttribute('name', 'apple-mobile-web-app-status-bar-style');
 
     if (dark) {
       document.documentElement.classList.add('dark');
-      document.documentElement.style.colorScheme = 'dark';
-      document.documentElement.style.backgroundColor = '#000000';
-      if (document.body) {
-        document.body.style.backgroundColor = '#000000';
-      }
       localStorage.setItem('ls_theme', 'dark');
-      themeColorMetas.forEach((meta) => meta.setAttribute('content', '#000000'));
+      themeColorMeta.setAttribute('content', '#000000');
       statusBarMeta.setAttribute('content', 'black-translucent');
     } else {
       document.documentElement.classList.remove('dark');
-      document.documentElement.style.colorScheme = 'light';
-      document.documentElement.style.backgroundColor = '#faf8f5';
-      if (document.body) {
-        document.body.style.backgroundColor = '#faf8f5';
-      }
       localStorage.setItem('ls_theme', 'light');
-      themeColorMetas.forEach((meta) => {
-        const media = meta.getAttribute('media');
-        if (media && media.includes('dark')) {
-          meta.setAttribute('content', '#000000');
-        } else {
-          meta.setAttribute('content', '#faf8f5');
-        }
-      });
+      themeColorMeta.setAttribute('content', '#f8fafc');
       statusBarMeta.setAttribute('content', 'default');
     }
 
+    if (!themeColorMeta.parentElement) document.head.appendChild(themeColorMeta);
     if (!statusBarMeta.parentElement) document.head.appendChild(statusBarMeta);
   }, [dark]);
 
@@ -1958,7 +1944,7 @@ export default function App() {
     .filter((f): f is string => typeof f === 'string' && f.trim().length > 0 && f !== '__NEW__');
 
   return (
-    <div className="p-3 md:p-8 pt-[max(0.75rem,env(safe-area-inset-top))] bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans w-full max-w-full overflow-x-hidden">
+    <div className="p-3 md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans w-full max-w-full overflow-x-hidden">
       
       <div id="app" className="max-w-4xl mx-auto relative w-full">
         
@@ -3035,19 +3021,8 @@ export default function App() {
         <div id="login-overlay" className="fixed inset-0 z-[1000] bg-slate-50 dark:bg-[#000000] flex items-center justify-center p-4">
           <div className="card p-8 max-w-sm w-full shadow-2xl bg-white dark:bg-[#121212] border border-slate-200 dark:border-[#262626] rounded-3xl">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl overflow-hidden flex items-center justify-center shadow-lg mx-auto mb-4">
-                <img 
-                  src="/apple-touch-icon.png" 
-                  onError={(e) => {
-                    const target = e.currentTarget;
-                    if (!target.src.endsWith('/favicon.svg')) {
-                      target.src = '/favicon.svg';
-                    }
-                  }}
-                  className="w-full h-full object-cover" 
-                  alt="LithoScale Pro Logo" 
-                  referrerPolicy="no-referrer" 
-                />
+              <div className="w-16 h-16 bg-black dark:bg-white rounded-2xl overflow-hidden flex items-center justify-center shadow-lg border border-white/10 mx-auto mb-4">
+                <img src="/apple-touch-icon.png" className="w-full h-full object-cover" alt="LithoScale Pro Logo" referrerPolicy="no-referrer" />
               </div>
               <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
                 LithoScale <span className="text-blue-500">PRO</span>
