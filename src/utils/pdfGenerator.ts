@@ -1,4 +1,4 @@
-import { Kitchen, AppConfig, Part, UserProfile } from '../types';
+import { Kitchen, AppConfig, Part, UserProfile, DEFAULTS } from '../types';
 import { findBeraterUser } from './beraterUtils';
 
 interface PDFParams {
@@ -126,12 +126,34 @@ export async function generateKitchenPDF(
       ];
     }
 
+    const isKostenvoranschlag = k.docType === 'kostenvoranschlag';
+
+    const pdfKuechenText = isKostenvoranschlag
+      ? (config.pdfKuechenTextKV !== undefined ? config.pdfKuechenTextKV : (DEFAULTS.config.pdfKuechenTextKV || config.pdfKuechenText))
+      : config.pdfKuechenText;
+
+    const pdfBallerinaText = isKostenvoranschlag
+      ? (config.pdfBallerinaTextKV !== undefined ? config.pdfBallerinaTextKV : (DEFAULTS.config.pdfBallerinaTextKV || config.pdfBallerinaText))
+      : config.pdfBallerinaText;
+
+    const pdfAnschlussText = isKostenvoranschlag
+      ? (config.pdfAnschlussTextKV !== undefined ? config.pdfAnschlussTextKV : (DEFAULTS.config.pdfAnschlussTextKV || config.pdfAnschlussText))
+      : config.pdfAnschlussText;
+
+    const pdfAnschlussRabattText = isKostenvoranschlag
+      ? (config.pdfAnschlussRabattTextKV !== undefined ? config.pdfAnschlussRabattTextKV : (DEFAULTS.config.pdfAnschlussRabattTextKV || config.pdfAnschlussRabattText))
+      : config.pdfAnschlussRabattText;
+
+    const pdfNachtext = isKostenvoranschlag
+      ? (config.pdfNachtextKV !== undefined ? config.pdfNachtextKV : (DEFAULTS.config.pdfNachtextKV || config.pdfNachtext))
+      : config.pdfNachtext;
+
     let anschlussTextArray: string[] = [];
-    if (k.optAnschluss && config.pdfAnschlussText) {
-      anschlussTextArray.push(config.pdfAnschlussText);
+    if (k.optAnschluss && pdfAnschlussText) {
+      anschlussTextArray.push(pdfAnschlussText);
     }
-    if (k.optAnschlussRabatt && config.pdfAnschlussRabattText) {
-      anschlussTextArray.push(config.pdfAnschlussRabattText);
+    if (k.optAnschlussRabatt && pdfAnschlussRabattText) {
+      anschlussTextArray.push(pdfAnschlussRabattText);
     }
 
     const anschlussPdfBlock = anschlussTextArray.length > 0 ? {
@@ -142,7 +164,7 @@ export async function generateKitchenPDF(
     } : { text: '' };
 
     const headerColumns: any[] = [
-      { text: 'ANGEBOT', style: 'mainHeader', width: '*' }
+      { text: isKostenvoranschlag ? 'KOSTENVORANSCHLAG' : 'ANGEBOT', style: 'mainHeader', width: '*' }
     ];
 
     if (logoDataUrl && isSupportedImage(logoDataUrl)) {
@@ -173,32 +195,94 @@ export async function generateKitchenPDF(
       };
     }
 
-    const docDefinition: any = {
-      info: { title: 'Küchenangebot', author: 'Küchenberater' },
-      pageMargins: [40, 40, 40, 80],
-      footer: function() {
-        return {
-          text: config.pdfFooter || '',
-          alignment: 'center',
-          fontSize: 8,
-          color: '#94a3b8',
-          margin: [40, 20, 40, 0]
-        };
+    const currentDateStr = new Intl.DateTimeFormat('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).format(new Date());
+
+    const contentList: any[] = [
+      { columns: headerColumns, margin: [0, 0, 0, 15] },
+      {
+        columns: [
+          k.kunde && k.kunde.trim() !== ''
+            ? { text: `Projekt / Kommission: ${k.kunde}`, fontSize: 12, bold: true, color: '#2563eb', width: '*' }
+            : { text: isKostenvoranschlag ? 'Kostenvoranschlag' : 'Ihre neue Traumküche', fontSize: 12, color: '#64748b', width: '*' },
+          { text: `Datum: ${currentDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
+        ],
+        margin: [0, 0, 0, 15]
       },
-      content: [
-        { columns: headerColumns, margin: [0, 0, 0, 15] },
-        k.kunde && k.kunde.trim() !== ''
-          ? { text: `Projekt / Kommission: ${k.kunde}`, margin: [0, 0, 0, 15], fontSize: 12, bold: true, color: '#2563eb' }
-          : { text: 'Ihre neue Traumküche', margin: [0, 0, 0, 15], color: '#64748b' },
-        beraterBlock,
-        k.optKuechenText && config.pdfKuechenText ? {
-          text: parseHTML(config.pdfKuechenText),
-          margin: [0, 0, 0, 20],
-          fontSize: 11,
-          color: '#334155'
-        } : { text: '', margin: [0, 0, 0, 0] },
-        
-        { text: '1. Möbel & Design', style: 'sectionHeader' },
+      beraterBlock,
+      k.optKuechenText && pdfKuechenText ? {
+        text: parseHTML(pdfKuechenText),
+        margin: [0, 0, 0, 20],
+        fontSize: 11,
+        color: '#334155'
+      } : { text: '', margin: [0, 0, 0, 0] }
+    ];
+
+    if (isKostenvoranschlag) {
+      const kostenTableBody: any[] = [
+        [
+          { text: 'Pos.', bold: true, fillColor: '#f1f5f9', fontSize: 10 },
+          { text: 'Bezeichnung / Leistung', bold: true, fillColor: '#f1f5f9', fontSize: 10 },
+          { text: 'Betrag (Brutto)', bold: true, alignment: 'right', fillColor: '#f1f5f9', fontSize: 10 }
+        ]
+      ];
+
+      const validKostenItems = (k.kostenItems || []).filter(item => (item.name && item.name.trim() !== '') || (item.val && item.val.trim() !== ''));
+      if (validKostenItems.length === 0) {
+        kostenTableBody.push([
+          { text: '1', fontSize: 10, color: '#64748b' },
+          { text: 'Pauschalbetrag / Leistung', fontSize: 10, color: '#334155' },
+          { text: formatMoney(params.totalVK), fontSize: 10, alignment: 'right', bold: true, color: '#0f172a' }
+        ]);
+      } else {
+        validKostenItems.forEach((item, idx) => {
+          const itemVal = parseFloat(String(item.val).replace(',', '.')) || 0;
+          kostenTableBody.push([
+            { text: `${idx + 1}`, fontSize: 10, color: '#64748b' },
+            { text: item.name || `Position ${idx + 1}`, fontSize: 10, color: '#334155' },
+            { text: formatMoney(itemVal), fontSize: 10, alignment: 'right', bold: true, color: '#0f172a' }
+          ]);
+        });
+      }
+
+      contentList.push(
+        { text: 'Positionen & Leistungen', style: 'sectionHeader', margin: [0, 10, 0, 10] },
+        {
+          table: {
+            headerRows: 1,
+            widths: [35, '*', 110],
+            body: kostenTableBody
+          },
+          layout: 'lightHorizontalLines',
+          margin: [0, 0, 0, 20]
+        },
+        { text: 'Gesamtsumme', style: 'sectionHeader', margin: [0, 8, 0, 6] },
+        { text: [
+          'Gesamtbetrag des Kostenvoranschlags: ',
+          { text: `${formatMoney(params.totalVK)}`, bold: true, fontSize: 13, color: '#000000' }
+        ], margin: [0, 0, 0, 4] },
+        { text: '* Alle Preise verstehen sich inkl. 19 % MwSt.', fontSize: 10, color: '#64748b', margin: [0, 0, 0, 4] }
+      );
+
+      if (k.optBallerina && pdfBallerinaText) {
+        contentList.push({
+          text: parseHTML(pdfBallerinaText),
+          margin: [0, 8, 0, 8],
+          fontSize: 10,
+          color: '#475569',
+          alignment: 'justify'
+        });
+      }
+
+      if (anschlussTextArray.length > 0) {
+        contentList.push(anschlussPdfBlock);
+      }
+    } else {
+      contentList.push(
+        { text: 'Möbel & Design', style: 'sectionHeader' },
         {
           columns: [
             { text: 'Front 1:', width: 100, bold: true },
@@ -224,25 +308,25 @@ export async function generateKitchenPDF(
           ], margin: [0, 0, 0, 10]
         },
 
-        k.optBallerina && config.pdfBallerinaText ? {
-          text: parseHTML(config.pdfBallerinaText),
+        k.optBallerina && pdfBallerinaText ? {
+          text: parseHTML(pdfBallerinaText),
           margin: [0, 5, 0, 15],
           fontSize: 10,
           color: '#475569',
           alignment: 'justify'
         } : { text: '', margin: [0, 0, 0, 10] },
 
-        { text: '2. Elektrogeräte', style: 'sectionHeader' },
+        { text: 'Elektrogeräte', style: 'sectionHeader' },
         allDevices.length > 0
           ? { ul: allDevices, margin: [0, 0, 0, 15], color: '#334155' }
           : { text: 'Keine Geräte erfasst.', margin: [0, 0, 0, 15], italics: true, color: '#94a3b8' },
 
-        { text: '3. Ebenso enthalten sind', style: 'sectionHeader' },
+        { text: 'Ebenso enthalten sind', style: 'sectionHeader' },
         zubehoerItems.length > 0
           ? { ul: zubehoerItems, margin: [0, 0, 0, 25], color: '#334155' }
           : { text: 'Kein weiteres Zubehör vermerkt.', margin: [0, 0, 0, 25], italics: true, color: '#94a3b8' },
 
-        { text: '4. Endpreis', style: 'sectionHeader', margin: [0, 8, 0, 4] },
+        { text: 'Endpreis', style: 'sectionHeader', margin: [0, 8, 0, 4] },
         { text: [
           'Wir bieten Ihnen die Küche zu einem Gesamt-Sonderpreis von ',
           { text: `${formatMoney(params.totalVK)} inkl. Lieferung und Montage`, bold: true, fontSize: 13, color: '#000000' },
@@ -253,7 +337,22 @@ export async function generateKitchenPDF(
         { text: '* Alle Preise verstehen sich inkl. 19 % MwSt.', fontSize: 10, color: '#64748b', margin: [0, 0, 0, 4] },
 
         anschlussPdfBlock
-      ],
+      );
+    }
+
+    const docDefinition: any = {
+      info: { title: isKostenvoranschlag ? 'Kostenvoranschlag' : 'Küchenangebot', author: 'Küchenberater' },
+      pageMargins: [40, 40, 40, 80],
+      footer: function() {
+        return {
+          text: config.pdfFooter || '',
+          alignment: 'center',
+          fontSize: 8,
+          color: '#94a3b8',
+          margin: [40, 20, 40, 0]
+        };
+      },
+      content: contentList,
       styles: {
         mainHeader: { fontSize: 24, bold: true, color: '#2563eb' },
         sectionHeader: { fontSize: 14, bold: true, margin: [0, 15, 0, 8], color: '#2563eb' }
@@ -276,7 +375,7 @@ export async function generateKitchenPDF(
       }
     });
 
-    if (mpArray.length > 0) {
+    if (!isKostenvoranschlag && mpArray.length > 0) {
       docDefinition.content.push(
         { text: 'OPTIONALE MEHR-/MINDERPREISE & ANMERKUNGEN', style: 'sectionHeader', margin: [0, 25, 0, 8] },
         { text: 'Folgende Positionen sind im oben genannten Gesamtpreis noch NICHT enthalten:', fontSize: 10, color: '#64748b', margin: [0, 0, 0, 8] },
@@ -284,17 +383,17 @@ export async function generateKitchenPDF(
       );
     }
 
-    if (k.optNachtext && config.pdfNachtext) {
+    if (k.optNachtext && pdfNachtext) {
       docDefinition.content.push(
-        { text: parseHTML(config.pdfNachtext), margin: [0, 30, 0, 0], fontSize: 11, color: '#334155' }
+        { text: parseHTML(pdfNachtext), margin: [0, 30, 0, 0], fontSize: 11, color: '#334155' }
       );
     }
 
     const pdf = (window as any).pdfMake.createPdf(docDefinition);
-    let fileName = 'Kuechenangebot.pdf';
+    let fileName = isKostenvoranschlag ? 'Kostenvoranschlag.pdf' : 'Kuechenangebot.pdf';
     if (k.kunde && k.kunde.trim() !== '') {
       const safeName = k.kunde.trim().replace(/[^a-zA-Z0-9\u00C0-\u017F]/g, '');
-      fileName = safeName + '_Kuechenangebot.pdf';
+      fileName = safeName + (isKostenvoranschlag ? '_Kostenvoranschlag.pdf' : '_Kuechenangebot.pdf');
     }
 
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);

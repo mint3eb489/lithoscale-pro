@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { onAuthStateChanged, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, onSnapshot, setDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db, internalAppId, handleFirestoreError, OperationType } from './firebase';
-import { Stone, AppConfig, Part, Kitchen, KitchenVersionOption, Offer, DEFAULTS, UserProfile, SavedCalculation, getBlancoChoiceArticleList, getMaterialRates, getStoneMaterial, StoneMaterialType } from './types';
+import { Stone, AppConfig, Part, Kitchen, KitchenVersionOption, Offer, DEFAULTS, UserProfile, SavedCalculation, DocumentType, getBlancoChoiceArticleList, getMaterialRates, getStoneMaterial, StoneMaterialType } from './types';
 import { DEFAULT_STONES } from './data/defaultStones';
 import { Navigation } from './components/Navigation';
 import { CalculatorTab } from './components/CalculatorTab';
@@ -81,40 +81,121 @@ export default function App() {
     delivery: true,
   });
 
-  // Kitchen States
-  const [kitchen, setKitchen] = useState<Kitchen>(() => {
+  // Helper to generate a pristine kitchen state
+  const createDefaultKitchen = (type: DocumentType, defaultBeraterId = ''): Kitchen => ({
+    docType: type,
+    kostenItems: [{ id: Date.now(), name: '', val: '' }],
+    offerId: null,
+    kunde: '',
+    beraterId: defaultBeraterId,
+    front1: '',
+    front2: '',
+    griff: '',
+    apName: '',
+    hauspreis: '',
+    ekMoebel: '',
+    rabattMoebel: '',
+    rabattMiele: '',
+    geraete: [{ id: Date.now(), name: '', val: '' }],
+    miele: [{ id: Date.now() + 1, name: '', val: '' }],
+    spuele: [{ id: Date.now() + 3, name: '', val: '' }],
+    wasser: [{ id: Date.now() + 2, name: '', val: '' }],
+    mehrpreise: [{ id: Date.now() + 4, name: '', val: '' }],
+    steinVK: '',
+    steinEK: '',
+    zubehoer: '',
+    showMoebelEK: true,
+    optKuechenText: true,
+    optBallerina: type === 'kostenvoranschlag' ? false : true,
+    optAnschluss: type === 'kostenvoranschlag' ? false : true,
+    optAnschlussRabatt: false,
+    optNachtext: true,
+    versionOptions: [],
+  });
+
+  // Active Kitchen Document Type ('angebot' vs 'kostenvoranschlag')
+  const [activeKitchenDocType, setActiveKitchenDocType] = useState<DocumentType>(() => {
+    try {
+      const cachedDoc = localStorage.getItem('ls_kitchen_doctype');
+      if (cachedDoc === 'kostenvoranschlag' || cachedDoc === 'angebot') return cachedDoc;
+      const cached = localStorage.getItem('ls_kitchen');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.docType === 'kostenvoranschlag') return 'kostenvoranschlag';
+      }
+    } catch {}
+    return 'angebot';
+  });
+
+  // Completely independent state for Angebot
+  const [angebotKitchen, setAngebotKitchen] = useState<Kitchen>(() => {
     try {
       const cached = localStorage.getItem('ls_kitchen');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.docType !== 'kostenvoranschlag') {
+          return { ...createDefaultKitchen('angebot'), ...parsed, docType: 'angebot' };
+        }
+      }
     } catch {}
-    return {
-      offerId: null,
-      kunde: '',
-      beraterId: '',
-      front1: '',
-      front2: '',
-      griff: '',
-      apName: '',
-      hauspreis: '',
-      ekMoebel: '',
-      rabattMoebel: '',
-      rabattMiele: '',
-      geraete: [{ id: Date.now(), name: '', val: '' }],
-      miele: [{ id: Date.now() + 1, name: '', val: '' }],
-      spuele: [{ id: Date.now() + 3, name: '', val: '' }],
-      wasser: [{ id: Date.now() + 2, name: '', val: '' }],
-      mehrpreise: [{ id: Date.now() + 4, name: '', val: '' }],
-      steinVK: '',
-      steinEK: '',
-      zubehoer: '',
-      showMoebelEK: true,
-      optKuechenText: true,
-      optBallerina: true,
-      optAnschluss: true,
-      optAnschlussRabatt: false,
-      optNachtext: true,
-    };
+    return createDefaultKitchen('angebot');
   });
+
+  // Completely independent state for Kostenvoranschlag
+  const [kvKitchen, setKvKitchen] = useState<Kitchen>(() => {
+    try {
+      const v2Applied = localStorage.getItem('ls_kv_defaults_v2') === '1';
+      const cachedKV = localStorage.getItem('ls_kitchen_kv');
+      if (cachedKV) {
+        const parsed = JSON.parse(cachedKV);
+        const base = { ...createDefaultKitchen('kostenvoranschlag'), ...parsed, docType: 'kostenvoranschlag' as DocumentType };
+        if (!v2Applied) {
+          base.optBallerina = false;
+          base.optAnschluss = false;
+          base.optAnschlussRabatt = false;
+          base.optKuechenText = true;
+          base.optNachtext = true;
+          localStorage.setItem('ls_kv_defaults_v2', '1');
+        }
+        return base;
+      }
+      const cached = localStorage.getItem('ls_kitchen');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.docType === 'kostenvoranschlag') {
+          const base = { ...createDefaultKitchen('kostenvoranschlag'), ...parsed, docType: 'kostenvoranschlag' as DocumentType };
+          if (!v2Applied) {
+            base.optBallerina = false;
+            base.optAnschluss = false;
+            base.optAnschlussRabatt = false;
+            base.optKuechenText = true;
+            base.optNachtext = true;
+            localStorage.setItem('ls_kv_defaults_v2', '1');
+          }
+          return base;
+        }
+      }
+      localStorage.setItem('ls_kv_defaults_v2', '1');
+    } catch {}
+    return createDefaultKitchen('kostenvoranschlag');
+  });
+
+  // Active kitchen object viewed/edited in the UI
+  const kitchen = activeKitchenDocType === 'kostenvoranschlag' ? kvKitchen : angebotKitchen;
+
+  const setKitchen: React.Dispatch<React.SetStateAction<Kitchen>> = useCallback((valOrFn) => {
+    if (activeKitchenDocType === 'kostenvoranschlag') {
+      setKvKitchen((prev) => {
+        const updated = typeof valOrFn === 'function' ? (valOrFn as (p: Kitchen) => Kitchen)(prev) : valOrFn;
+        return { ...updated, docType: 'kostenvoranschlag' };
+      });
+    } else {
+      setAngebotKitchen((prev) => {
+        const updated = typeof valOrFn === 'function' ? (valOrFn as (p: Kitchen) => Kitchen)(prev) : valOrFn;
+        return { ...updated, docType: 'angebot' };
+      });
+    }
+  }, [activeKitchenDocType]);
 
   // Synchronizers & Controls
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -223,6 +304,7 @@ export default function App() {
   const [compareList, setCompareList] = useState<string[]>([]);
   const [compareModalOpen, setCompareModalOpen] = useState<boolean>(false);
   const [offersModalOpen, setOffersModalOpen] = useState<boolean>(false);
+  const [archiveDocTypeFilter, setArchiveDocTypeFilter] = useState<DocumentType>('angebot');
   const [offersList, setOffersList] = useState<Offer[]>([]);
   const [offerSearch, setOfferSearch] = useState<string>('');
   const [offerBeraterFilter, setOfferBeraterFilter] = useState<string>('all');
@@ -237,6 +319,7 @@ export default function App() {
   const [activeFolderFilter, setActiveFolderFilter] = useState<string>('all');
   const [customFolders, setCustomFolders] = useState<string[]>([]);
   const [expandedFamilies, setExpandedFamilies] = useState<Record<string, boolean>>({});
+  const [openFolderMenuFamilyId, setOpenFolderMenuFamilyId] = useState<string | null>(null);
 
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
   const [lightboxImg, setLightboxImg] = useState<string>('');
@@ -256,8 +339,16 @@ export default function App() {
   }, [parts]);
 
   useEffect(() => {
-    localStorage.setItem('ls_kitchen', JSON.stringify(kitchen));
-  }, [kitchen]);
+    localStorage.setItem('ls_kitchen_doctype', activeKitchenDocType);
+  }, [activeKitchenDocType]);
+
+  useEffect(() => {
+    localStorage.setItem('ls_kitchen', JSON.stringify(angebotKitchen));
+  }, [angebotKitchen]);
+
+  useEffect(() => {
+    localStorage.setItem('ls_kitchen_kv', JSON.stringify(kvKitchen));
+  }, [kvKitchen]);
 
   // Handle Dark mode toggle & iOS status bar / Dynamic Island synchronization
   useEffect(() => {
@@ -799,12 +890,35 @@ export default function App() {
       nextVersion = 1;
     }
 
+    const isKostenvoranschlag = kitchen.docType === 'kostenvoranschlag';
+    const parsePrice = (str: string) => parseFloat(String(str).replace(',', '.')) || 0;
+    let effectiveVK = 0;
+    if (isKostenvoranschlag) {
+      effectiveVK = (kitchen.kostenItems || []).reduce((sum, it) => sum + parsePrice(it.val), 0);
+    } else {
+      effectiveVK = parsePrice(kitchen.hauspreis);
+      if (effectiveVK <= 0) {
+        const ekMoebel = parsePrice(kitchen.ekMoebel);
+        const rabattMoebel = parsePrice(kitchen.rabattMoebel);
+        const moebelFactor = personalFactors.moebelFactor;
+        const vkMoebel = ekMoebel * moebelFactor * (1 - rabattMoebel / 100);
+        const vkStein = parsePrice(kitchen.steinVK);
+        let sumMieleBrutto = 0;
+        (kitchen.miele || []).forEach((m) => { sumMieleBrutto += parsePrice(m.val); });
+        const rabattMiele = parsePrice(kitchen.rabattMiele);
+        const vkMiele = sumMieleBrutto * (1 - rabattMiele / 100);
+        let vkWasser = 0;
+        (kitchen.wasser || []).forEach((w) => { vkWasser += parsePrice(w.val); });
+        effectiveVK = vkMoebel + vkWasser + vkStein + vkMiele;
+      }
+    }
+
     const offerData: Offer = {
       id: targetOfferId,
       kunde: kitchen.kunde.trim(),
       beraterId: kitchen.beraterId,
       timestamp: Date.now(),
-      totalVK: parseFloat(kitchen.hauspreis) || 0,
+      totalVK: effectiveVK,
       kitchen: { ...kitchen, offerId: targetOfferId },
       parts: parts,
       stoneId: selectedStoneId,
@@ -813,6 +927,7 @@ export default function App() {
       parentOfferId: parentOfferId,
       version: nextVersion,
       versionComment: options.comment.trim(),
+      docType: kitchen.docType || 'angebot',
     };
 
     try {
@@ -843,8 +958,11 @@ export default function App() {
       try {
         const docRef = doc(db, 'artifacts', internalAppId, 'public', 'data', 'offers', id);
         await deleteDoc(docRef);
-        if (kitchen.offerId === id) {
-          setKitchen((prev) => ({ ...prev, offerId: null }));
+        if (angebotKitchen.offerId === id) {
+          setAngebotKitchen((prev) => ({ ...prev, offerId: null }));
+        }
+        if (kvKitchen.offerId === id) {
+          setKvKitchen((prev) => ({ ...prev, offerId: null }));
         }
         showToast('Angebot gelöscht.');
       } catch (err) {
@@ -1030,16 +1148,33 @@ export default function App() {
   const loadOffer = (id: string) => {
     const o = visibleOffers.find((x) => x.id === id);
     if (!o) return;
-    requestConfirm('Angebot laden?', `Möchtest du das Angebot für "${o.kunde}" laden? Aktuelle Daten auf dieser Seite werden überschrieben.`, () => {
+    const isKV = o.kitchen?.docType === 'kostenvoranschlag' || o.docType === 'kostenvoranschlag';
+    const label = isKV ? 'Kostenvoranschlag' : 'Angebot';
+    requestConfirm(`${label} laden?`, `Möchtest du ${label === 'Kostenvoranschlag' ? 'den' : 'das'} ${label} für "${o.kunde}" laden? Aktuelle Daten auf dieser Seite werden überschrieben.`, () => {
       const loadedBeraterId = resolveBeraterId(o.kitchen?.beraterId || o.beraterId, usersList, userProfile, config.beraterList);
-      setKitchen({
-        ...o.kitchen,
-        beraterId: loadedBeraterId,
-      });
+      if (isKV) {
+        setActiveKitchenDocType('kostenvoranschlag');
+        setKvKitchen({
+          ...createDefaultKitchen('kostenvoranschlag', loadedBeraterId),
+          ...o.kitchen,
+          docType: 'kostenvoranschlag',
+          kostenItems: (o.kitchen?.kostenItems && o.kitchen.kostenItems.length > 0) ? o.kitchen.kostenItems : [{ id: Date.now(), name: '', val: '' }],
+          beraterId: loadedBeraterId,
+        });
+      } else {
+        setActiveKitchenDocType('angebot');
+        setAngebotKitchen({
+          ...createDefaultKitchen('angebot', loadedBeraterId),
+          ...o.kitchen,
+          docType: 'angebot',
+          kostenItems: (o.kitchen?.kostenItems && o.kitchen.kostenItems.length > 0) ? o.kitchen.kostenItems : [{ id: Date.now(), name: '', val: '' }],
+          beraterId: loadedBeraterId,
+        });
+      }
       // Steinrechner bleibt beim Laden eines Angebots unberührt
       setOffersModalOpen(false);
       setActiveTab('kitchen');
-      showToast('Angebot geladen.');
+      showToast(`${label} geladen.`);
     });
   };
 
@@ -1107,32 +1242,38 @@ export default function App() {
 
   const triggerPDFGeneration = () => {
     // Collect parameters
-    const s = stones.find((x) => x.id === selectedStoneId) || stones[0] || null;
-    const parsePrice = (str: string) => parseFloat(String(str).replace(',', '.')) || 0;
+    const parsePrice = (str: string) => parseFloat(String(str).replace(",", ".")) || 0;
+    const isKostenvoranschlag = kitchen.docType === "kostenvoranschlag";
+    let finalDisplayVK = 0;
+    let proportionMontage = 0;
+    let vkStein = 0;
+    let vkMiele = 0;
+    let vkMoebel = 0;
 
-    const ekMoebel = parsePrice(kitchen.ekMoebel);
-    const rabattMoebel = parsePrice(kitchen.rabattMoebel);
-    const moebelFactor = personalFactors.moebelFactor;
-    const vkMoebel = ekMoebel * moebelFactor * (1 - rabattMoebel / 100);
-
-    const vkStein = parsePrice(kitchen.steinVK);
-
-    let sumMieleBrutto = 0;
-    (kitchen.miele || []).forEach((m) => {
-      sumMieleBrutto += parsePrice(m.val);
-    });
-    const rabattMiele = parsePrice(kitchen.rabattMiele);
-    const vkMiele = sumMieleBrutto * (1 - rabattMiele / 100);
-
-    let vkWasser = 0;
-    (kitchen.wasser || []).forEach((w) => {
-      vkWasser += parsePrice(w.val);
-    });
-
-    const totalCalculatedVK = vkMoebel + vkWasser + vkStein + vkMiele;
-    const targetEndprice = parsePrice(kitchen.hauspreis);
-    const finalDisplayVK = targetEndprice > 0 ? targetEndprice : totalCalculatedVK;
-    const proportionMontage = finalDisplayVK * 0.095;
+    if (isKostenvoranschlag) {
+      finalDisplayVK = (kitchen.kostenItems || []).reduce((sum, it) => sum + parsePrice(it.val), 0);
+      proportionMontage = finalDisplayVK * 0.095;
+    } else {
+      const ekMoebel = parsePrice(kitchen.ekMoebel);
+      const rabattMoebel = parsePrice(kitchen.rabattMoebel);
+      const moebelFactor = personalFactors.moebelFactor;
+      vkMoebel = ekMoebel * moebelFactor * (1 - rabattMoebel / 100);
+      vkStein = parsePrice(kitchen.steinVK);
+      let sumMieleBrutto = 0;
+      (kitchen.miele || []).forEach((m) => {
+        sumMieleBrutto += parsePrice(m.val);
+      });
+      const rabattMiele = parsePrice(kitchen.rabattMiele);
+      vkMiele = sumMieleBrutto * (1 - rabattMiele / 100);
+      let vkWasser = 0;
+      (kitchen.wasser || []).forEach((w) => {
+        vkWasser += parsePrice(w.val);
+      });
+      const totalCalculatedVK = vkMoebel + vkWasser + vkStein + vkMiele;
+      const targetEndprice = parsePrice(kitchen.hauspreis);
+      finalDisplayVK = targetEndprice > 0 ? targetEndprice : totalCalculatedVK;
+      proportionMontage = finalDisplayVK * 0.095;
+    }
 
     generateKitchenPDF(
       {
@@ -1153,32 +1294,38 @@ export default function App() {
   const triggerPDFPreview = async () => {
     setIsPreviewLoading(true);
     try {
-      const s = stones.find((x) => x.id === selectedStoneId) || stones[0] || null;
-      const parsePrice = (str: string) => parseFloat(String(str).replace(',', '.')) || 0;
+      const parsePrice = (str: string) => parseFloat(String(str).replace(",", ".")) || 0;
+      const isKostenvoranschlag = kitchen.docType === "kostenvoranschlag";
+      let finalDisplayVK = 0;
+      let proportionMontage = 0;
+      let vkStein = 0;
+      let vkMiele = 0;
+      let vkMoebel = 0;
 
-      const ekMoebel = parsePrice(kitchen.ekMoebel);
-      const rabattMoebel = parsePrice(kitchen.rabattMoebel);
-      const moebelFactor = personalFactors.moebelFactor;
-      const vkMoebel = ekMoebel * moebelFactor * (1 - rabattMoebel / 100);
-
-      const vkStein = parsePrice(kitchen.steinVK);
-
-      let sumMieleBrutto = 0;
-      (kitchen.miele || []).forEach((m) => {
-        sumMieleBrutto += parsePrice(m.val);
-      });
-      const rabattMiele = parsePrice(kitchen.rabattMiele);
-      const vkMiele = sumMieleBrutto * (1 - rabattMiele / 100);
-
-      let vkWasser = 0;
-      (kitchen.wasser || []).forEach((w) => {
-        vkWasser += parsePrice(w.val);
-      });
-
-      const totalCalculatedVK = vkMoebel + vkWasser + vkStein + vkMiele;
-      const targetEndprice = parsePrice(kitchen.hauspreis);
-      const finalDisplayVK = targetEndprice > 0 ? targetEndprice : totalCalculatedVK;
-      const proportionMontage = finalDisplayVK * 0.095;
+      if (isKostenvoranschlag) {
+        finalDisplayVK = (kitchen.kostenItems || []).reduce((sum, it) => sum + parsePrice(it.val), 0);
+        proportionMontage = finalDisplayVK * 0.095;
+      } else {
+        const ekMoebel = parsePrice(kitchen.ekMoebel);
+        const rabattMoebel = parsePrice(kitchen.rabattMoebel);
+        const moebelFactor = personalFactors.moebelFactor;
+        vkMoebel = ekMoebel * moebelFactor * (1 - rabattMoebel / 100);
+        vkStein = parsePrice(kitchen.steinVK);
+        let sumMieleBrutto = 0;
+        (kitchen.miele || []).forEach((m) => {
+          sumMieleBrutto += parsePrice(m.val);
+        });
+        const rabattMiele = parsePrice(kitchen.rabattMiele);
+        vkMiele = sumMieleBrutto * (1 - rabattMiele / 100);
+        let vkWasser = 0;
+        (kitchen.wasser || []).forEach((w) => {
+          vkWasser += parsePrice(w.val);
+        });
+        const totalCalculatedVK = vkMoebel + vkWasser + vkStein + vkMiele;
+        const targetEndprice = parsePrice(kitchen.hauspreis);
+        finalDisplayVK = targetEndprice > 0 ? targetEndprice : totalCalculatedVK;
+        proportionMontage = finalDisplayVK * 0.095;
+      }
 
       const blobUrl = await generateKitchenPDF(
         {
@@ -1193,7 +1340,7 @@ export default function App() {
           usersList,
         },
         showToast,
-        'blob'
+        "blob"
       );
       if (blobUrl) {
         setPdfPreviewUrl(blobUrl);
@@ -1885,6 +2032,15 @@ export default function App() {
     return o.editor === currentUser.uid;
   });
 
+  const isOfferKV = (o: Offer) => o.kitchen?.docType === 'kostenvoranschlag' || o.docType === 'kostenvoranschlag';
+  const angeboteCount = visibleOffers.filter((o) => !isOfferKV(o)).length;
+  const kvCount = visibleOffers.filter((o) => isOfferKV(o)).length;
+
+  const docTypeOffers = visibleOffers.filter((o) => {
+    const isKV = isOfferKV(o);
+    return archiveDocTypeFilter === 'kostenvoranschlag' ? isKV : !isKV;
+  });
+
   // 1. Extract folders and merge with customFolders
   const dbFolders = Array.from(new Set([
     ...customFolders,
@@ -1892,7 +2048,7 @@ export default function App() {
   ])).filter((f): f is string => typeof f === 'string' && f.trim().length > 0 && f !== '__NEW__');
 
   // 2. Filter raw offers
-  const filteredOffers = visibleOffers.filter((o) => {
+  const filteredOffers = docTypeOffers.filter((o) => {
     // Folder filter
     if (activeFolderFilter !== 'all') {
       const ofFolder = o.folder || '';
@@ -2073,39 +2229,29 @@ export default function App() {
             <KitchenTab
               kitchen={kitchen}
               setKitchen={setKitchen}
+              activeDocType={activeKitchenDocType}
+              onSwitchDocType={(type: DocumentType) => {
+                setActiveKitchenDocType(type);
+              }}
               config={config}
-              onOpenOffersModal={() => setOffersModalOpen(true)}
+              onOpenOffersModal={() => {
+                setArchiveDocTypeFilter(activeKitchenDocType);
+                setOffersModalOpen(true);
+              }}
               onPullSelectedStonePrice={pullSelectedStonePrice}
               onResetKitchen={() => {
-                requestConfirm('Kalkulation leeren?', 'Möchtest du die Küchenkalkulation wirklich komplett zurücksetzen?', () => {
-                  setKitchen({
-                    offerId: null,
-                    kunde: '',
-                    beraterId: userProfile?.id || '',
-                    front1: '',
-                    front2: '',
-                    griff: '',
-                    apName: '',
-                    hauspreis: '',
-                    ekMoebel: '',
-                    rabattMoebel: '',
-                    rabattMiele: '',
-                    geraete: [{ id: Date.now(), name: '', val: '' }],
-                    miele: [{ id: Date.now() + 1, name: '', val: '' }],
-                    spuele: [{ id: Date.now() + 3, name: '', val: '' }],
-                    wasser: [{ id: Date.now() + 2, name: '', val: '' }],
-                    mehrpreise: [{ id: Date.now() + 4, name: '', val: '' }],
-                    steinVK: '',
-                    steinEK: '',
-                    zubehoer: '',
-                    showMoebelEK: true,
-                    optKuechenText: true,
-                    optBallerina: true,
-                    optAnschluss: true,
-                    optAnschlussRabatt: false,
-                    optNachtext: true,
-                    versionOptions: [],
-                  });
+                const isKV = activeKitchenDocType === 'kostenvoranschlag';
+                const title = isKV ? 'Kostenvoranschlag leeren?' : 'Kalkulation leeren?';
+                const desc = isKV
+                  ? 'Möchtest du den Kostenvoranschlag wirklich komplett zurücksetzen?'
+                  : 'Möchtest du die Küchenkalkulation wirklich komplett zurücksetzen?';
+                requestConfirm(title, desc, () => {
+                  if (isKV) {
+                    setKvKitchen(createDefaultKitchen('kostenvoranschlag', userProfile?.id || ''));
+                  } else {
+                    setAngebotKitchen(createDefaultKitchen('angebot', userProfile?.id || ''));
+                  }
+                  showToast(isKV ? 'Kostenvoranschlag zurückgesetzt.' : 'Kalkulation zurückgesetzt.');
                 });
               }}
               onSaveOffer={handleOpenSaveModal}
@@ -2194,17 +2340,71 @@ export default function App() {
         {offersModalOpen && (
           <div className="fixed inset-0 z-[400] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
             <div className="bg-white dark:bg-[#121212] w-full max-w-6xl h-[85vh] max-h-[90vh] md:max-h-[800px] rounded-3xl shadow-2xl overflow-hidden flex flex-col">
-              <div className="p-4 md:p-6 border-b border-slate-200 dark:border-darkBorder flex justify-between items-center bg-slate-50 dark:bg-[#181818]">
-                <div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white">Cloud Archiv</h2>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-1">Sicherheit in der Cloud: Strukturierte Ordner & durchgängige Versionierung</p>
+              <div className="p-4 md:p-6 border-b border-slate-200 dark:border-darkBorder flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50 dark:bg-[#181818]">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white">Cloud Archiv</h2>
+                  </div>
+                  <button
+                    onClick={() => setOffersModalOpen(false)}
+                    className="md:hidden w-9 h-9 bg-slate-200 dark:bg-darkBorder rounded-full flex items-center justify-center text-slate-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer shrink-0"
+                  >
+                    ✕
+                  </button>
                 </div>
-                <button
-                  onClick={() => setOffersModalOpen(false)}
-                  className="w-10 h-10 bg-slate-200 dark:bg-darkBorder rounded-full flex items-center justify-center text-slate-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                >
-                  ✕
-                </button>
+
+                <div className="flex items-center gap-3 justify-between md:justify-end">
+                  {/* Toggle Angebot vs Kostenvoranschlag im Cloud-Archiv */}
+                  <div className="inline-flex w-full md:w-auto p-1 bg-slate-200/80 dark:bg-black/60 rounded-xl border border-slate-300 dark:border-darkBorder shadow-xs">
+                    <button
+                      type="button"
+                      onClick={() => setArchiveDocTypeFilter('angebot')}
+                      className={`flex-1 md:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                        archiveDocTypeFilter === 'angebot'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <span>Angebot</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                          archiveDocTypeFilter === 'angebot'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-300 dark:bg-zinc-800 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {angeboteCount}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setArchiveDocTypeFilter('kostenvoranschlag')}
+                      className={`flex-1 md:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                        archiveDocTypeFilter === 'kostenvoranschlag'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <span>Kostenvoranschlag</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+                          archiveDocTypeFilter === 'kostenvoranschlag'
+                            ? 'bg-white/20 text-white'
+                            : 'bg-slate-300 dark:bg-zinc-800 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {kvCount}
+                      </span>
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setOffersModalOpen(false)}
+                    className="hidden md:flex w-10 h-10 bg-slate-200 dark:bg-darkBorder rounded-full items-center justify-center text-slate-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 flex overflow-hidden">
@@ -2246,10 +2446,10 @@ export default function App() {
                     >
                       <div className="flex items-center gap-2">
                         <FolderOpen className="w-4 h-4 shrink-0" />
-                        <span>Alle Angebote</span>
+                        <span>{archiveDocTypeFilter === 'kostenvoranschlag' ? 'Alle Kostenvoranschläge' : 'Alle Angebote'}</span>
                       </div>
                       <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${activeFolderFilter === 'all' ? 'bg-white/20' : 'bg-slate-200 dark:bg-zinc-800'}`}>
-                        {visibleOffers.length}
+                        {docTypeOffers.length}
                       </span>
                     </button>
 
@@ -2267,7 +2467,7 @@ export default function App() {
                         <span>Ohne Ordner</span>
                       </div>
                       <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full ${activeFolderFilter === '' ? 'bg-white/20' : 'bg-slate-200 dark:bg-zinc-800'}`}>
-                        {visibleOffers.filter(o => !o.folder).length}
+                        {docTypeOffers.filter(o => !o.folder).length}
                       </span>
                     </button>
 
@@ -2276,7 +2476,7 @@ export default function App() {
 
                     {/* 3. Custom Folders */}
                     {dbFolders.map((folderName, idx) => {
-                      const count = visibleOffers.filter(o => o.folder === folderName).length;
+                      const count = docTypeOffers.filter(o => o.folder === folderName).length;
                       return (
                         <div
                           key={`dbfolder-tab-${folderName}-${idx}`}
@@ -2330,10 +2530,10 @@ export default function App() {
                         onChange={(e) => setActiveFolderFilter(e.target.value)}
                         className="w-full bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-xl px-4 py-2.5 text-xs font-black outline-none tracking-widest uppercase cursor-pointer text-slate-800 dark:text-white"
                       >
-                        <option value="all">📁 Alle Ordner ({visibleOffers.length})</option>
-                        <option value="">📂 Ohne Ordner ({visibleOffers.filter(o => !o.folder).length})</option>
+                        <option value="all">📁 {archiveDocTypeFilter === 'kostenvoranschlag' ? 'Alle Kostenvoranschläge' : 'Alle Angebote'} ({docTypeOffers.length})</option>
+                        <option value="">📂 Ohne Ordner ({docTypeOffers.filter(o => !o.folder).length})</option>
                         {dbFolders.map((folderName, idx) => (
-                          <option key={`dbfolder-filter-${folderName}-${idx}`} value={folderName}>📁 {folderName} ({visibleOffers.filter(o => o.folder === folderName).length})</option>
+                          <option key={`dbfolder-filter-${folderName}-${idx}`} value={folderName}>📁 {folderName} ({docTypeOffers.filter(o => o.folder === folderName).length})</option>
                         ))}
                       </select>
                     </div>
@@ -2344,7 +2544,7 @@ export default function App() {
                         type="text"
                         value={offerSearch}
                         onChange={(e) => setOfferSearch(e.target.value)}
-                        placeholder="Suchen nach Kunde oder Kommission..."
+                        placeholder={archiveDocTypeFilter === 'kostenvoranschlag' ? 'Kostenvoranschlag suchen nach Kunde oder Kommission...' : 'Angebot suchen nach Kunde oder Kommission...'}
                         className="w-full bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-xl pl-9 pr-4 py-2 text-sm outline-none focus:border-blue-500 text-slate-900 dark:text-white"
                       />
                     </div>
@@ -2405,8 +2605,12 @@ export default function App() {
                     {sortedFamilies.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                         <Folder className="w-12 h-12 stroke-1 text-slate-350 dark:text-slate-700 mb-3" />
-                        <p className="text-sm font-bold">Keine Angebote in dieser Auswahl gefunden.</p>
-                        <p className="text-xs text-slate-500 mt-1">Ändere den Filter oder erstelle eine neue Küchenkalkulation.</p>
+                        <p className="text-sm font-bold">
+                          Keine {archiveDocTypeFilter === 'kostenvoranschlag' ? 'Kostenvoranschläge' : 'Angebote'} in dieser Auswahl gefunden.
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          Ändere den Filter oder erstelle {archiveDocTypeFilter === 'kostenvoranschlag' ? 'einen neuen Kostenvoranschlag' : 'ein neues Angebot'}.
+                        </p>
                       </div>
                     ) : (
                       sortedFamilies.map((fam, famIdx) => {
@@ -2418,39 +2622,32 @@ export default function App() {
                         return (
                           <div
                             key={`fam-${fam.familyId || famIdx}-${famIdx}`}
-                            className="bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-2xl overflow-hidden transition-all duration-300 shadow-sm hover:border-blue-500/60"
+                            className={`bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-2xl transition-all duration-300 shadow-sm hover:border-blue-500/60 ${openFolderMenuFamilyId === fam.familyId ? 'z-30 overflow-visible' : 'overflow-hidden'}`}
                           >
                             {/* PRIMARY CARD ROW (LATEST VERSION) */}
                             <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/50 dark:bg-[#121214]/50">
-                              <div className="flex-1">
+                              <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                                  <h3 className="font-extrabold text-slate-800 dark:text-white text-base tracking-tight leading-none mr-2">
+                                  <h3 className="font-extrabold text-slate-800 dark:text-white text-base tracking-tight leading-none mr-1">
                                     {fam.kunde}
                                   </h3>
                                   
                                   {/* Active Version badge */}
-                                  <span className="text-[9px] font-black uppercase text-blue-555 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
-                                    V{(lat.version || 1)} (Neueste)
+                                  <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
+                                    V{(lat.version || 1)}
                                   </span>
 
-                                  {/* Interactive Folder Selector */}
-                                  <div className="flex items-center gap-1.5 bg-amber-500/5 border border-amber-500/15 px-2 py-0.5 rounded-full">
-                                    <Folder className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                                    <select
-                                      value={lat.folder || ''}
-                                      onChange={async (e) => {
-                                        await moveOfferFamilyToFolder(fam.familyId, e.target.value);
-                                      }}
-                                      className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 bg-transparent border-none p-0 outline-none cursor-pointer focus:ring-0 max-w-[120px] md:max-w-[150px] truncate"
-                                      title="Ordner zuweisen"
+                                  {/* Assigned Folder Tag if present */}
+                                  {lat.folder && (
+                                    <span 
+                                      className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer hover:bg-amber-500/20 transition-colors"
+                                      onClick={() => setActiveFolderFilter(lat.folder)}
+                                      title={`Ordner „${lat.folder}“ filtern`}
                                     >
-                                      <option value="" className="text-slate-800 dark:text-black font-semibold bg-white dark:bg-zinc-900">(Kein Ordner)</option>
-                                      {dbFolders.map((folderName, fIdx) => (
-                                        <option key={`fam-folder-${fam.familyId}-${folderName}-${fIdx}`} value={folderName} className="text-slate-800 dark:text-black font-semibold bg-white dark:bg-zinc-900">{folderName}</option>
-                                      ))}
-                                      <option value="__NEW__" className="text-blue-500 dark:text-blue-400 font-bold bg-white dark:bg-zinc-900">+ Neuer Ordner...</option>
-                                    </select>
-                                  </div>
+                                      <Folder className="w-2.5 h-2.5 shrink-0" />
+                                      <span className="max-w-[130px] truncate">{lat.folder}</span>
+                                    </span>
+                                  )}
 
                                   {/* Comment preview if exists */}
                                   {lat.versionComment && (
@@ -2485,6 +2682,150 @@ export default function App() {
                                   </button>
                                 )}
 
+                                {/* ORDNER BUTTON LINKS NEBEN LADEN */}
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenFolderMenuFamilyId(openFolderMenuFamilyId === fam.familyId ? null : fam.familyId)}
+                                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+                                      lat.folder
+                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
+                                        : 'border-slate-200 dark:border-zinc-800 hover:border-blue-500/50 hover:bg-slate-100 dark:hover:bg-zinc-850 text-slate-700 dark:text-slate-200'
+                                    }`}
+                                    title={lat.folder ? `Ordner: ${lat.folder}` : 'Ordner'}
+                                  >
+                                    <Folder className="w-3.5 h-3.5 shrink-0" />
+                                    <span>Ordner</span>
+                                  </button>
+
+                                  {openFolderMenuFamilyId === fam.familyId && (
+                                    <>
+                                      <div 
+                                        className="fixed inset-0 z-40" 
+                                        onClick={() => setOpenFolderMenuFamilyId(null)} 
+                                      />
+                                      <div className="absolute right-0 top-full mt-1.5 w-64 bg-white dark:bg-[#18181c] border border-slate-200 dark:border-zinc-750 rounded-2xl shadow-2xl p-2 z-50 text-left">
+                                        {lat.folder ? (
+                                          <>
+                                            <div className="p-1">
+                                              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 py-1">
+                                                Aktueller Ordner:
+                                              </div>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setActiveFolderFilter(lat.folder);
+                                                  setOpenFolderMenuFamilyId(null);
+                                                }}
+                                                className="w-full text-left px-2.5 py-2 rounded-xl font-bold text-xs flex items-center gap-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors cursor-pointer"
+                                              >
+                                                <FolderOpen className="w-4 h-4 shrink-0 text-blue-500" />
+                                                <span className="truncate">Ordner „{lat.folder}“ öffnen</span>
+                                              </button>
+                                            </div>
+
+                                            <div className="border-t border-slate-200 dark:border-zinc-800 my-1" />
+
+                                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 py-1">
+                                              Anderem Ordner zuweisen:
+                                            </div>
+                                            <div className="max-h-40 overflow-y-auto space-y-0.5 px-0.5">
+                                              {dbFolders.filter(f => f !== lat.folder).length === 0 ? (
+                                                <div className="text-[11px] text-slate-400 px-2 py-1 italic">
+                                                  Keine weiteren Ordner vorhanden
+                                                </div>
+                                              ) : (
+                                                dbFolders.filter(f => f !== lat.folder).map(fName => (
+                                                  <button
+                                                    key={`assign-${fam.familyId}-${fName}`}
+                                                    type="button"
+                                                    onClick={async () => {
+                                                      setOpenFolderMenuFamilyId(null);
+                                                      await moveOfferFamilyToFolder(fam.familyId, fName);
+                                                    }}
+                                                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors cursor-pointer truncate"
+                                                  >
+                                                    <Folder className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                    <span className="truncate">{fName}</span>
+                                                  </button>
+                                                ))
+                                              )}
+                                            </div>
+
+                                            <div className="border-t border-slate-200 dark:border-zinc-800 my-1" />
+
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setOpenFolderMenuFamilyId(null);
+                                                moveOfferFamilyToFolder(fam.familyId, '__NEW__');
+                                              }}
+                                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 transition-colors cursor-pointer"
+                                            >
+                                              <Plus className="w-3.5 h-3.5 shrink-0" />
+                                              <span>Neuer Ordner...</span>
+                                            </button>
+
+                                            <button
+                                              type="button"
+                                              onClick={async () => {
+                                                setOpenFolderMenuFamilyId(null);
+                                                await moveOfferFamilyToFolder(fam.familyId, '');
+                                              }}
+                                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer"
+                                            >
+                                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                              <span>Aus Ordner entfernen</span>
+                                            </button>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 py-1">
+                                              Ordner zuweisen:
+                                            </div>
+                                            <div className="max-h-48 overflow-y-auto space-y-0.5 px-0.5">
+                                              {dbFolders.length === 0 ? (
+                                                <div className="text-[11px] text-slate-400 px-2 py-2 italic">
+                                                  Noch keine Ordner angelegt
+                                                </div>
+                                              ) : (
+                                                dbFolders.map(fName => (
+                                                  <button
+                                                    key={`assign-${fam.familyId}-${fName}`}
+                                                    type="button"
+                                                    onClick={async () => {
+                                                      setOpenFolderMenuFamilyId(null);
+                                                      await moveOfferFamilyToFolder(fam.familyId, fName);
+                                                    }}
+                                                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors cursor-pointer truncate"
+                                                  >
+                                                    <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                                    <span className="truncate">{fName}</span>
+                                                  </button>
+                                                ))
+                                              )}
+                                            </div>
+
+                                            <div className="border-t border-slate-200 dark:border-zinc-800 my-1" />
+
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setOpenFolderMenuFamilyId(null);
+                                                moveOfferFamilyToFolder(fam.familyId, '__NEW__');
+                                              }}
+                                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 transition-colors cursor-pointer"
+                                            >
+                                              <Plus className="w-3.5 h-3.5 shrink-0" />
+                                              <span>Neuer Ordner...</span>
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+
                                 <button
                                   onClick={() => loadOffer(lat.id)}
                                   className="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
@@ -2516,6 +2857,11 @@ export default function App() {
                                           <span className="text-[10px] font-black uppercase text-slate-500 bg-slate-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
                                             V{ver.version || 1}
                                           </span>
+                                          {(ver.kitchen?.docType === 'kostenvoranschlag' || ver.docType === 'kostenvoranschlag') && (
+                                            <span className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                                              Kostenvoranschlag
+                                            </span>
+                                          )}
                                           {ver.versionComment && (
                                             <span className="font-medium text-slate-600 dark:text-slate-400 italic text-[11px] truncate max-w-md">
                                               "{ver.versionComment}"
@@ -2573,7 +2919,9 @@ export default function App() {
               {/* Dialog Header */}
               <div className="p-5 border-b border-slate-200 dark:border-darkBorder bg-slate-50 dark:bg-[#181818] flex justify-between items-center">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white">Angebot sichern</h3>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                    {kitchen.docType === 'kostenvoranschlag' ? 'Kostenvoranschlag sichern' : 'Angebot sichern'}
+                  </h3>
                   <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold mt-0.5">Cloud-Speicherung & Versionierung</p>
                 </div>
                 <button

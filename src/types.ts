@@ -3,6 +3,7 @@
  */
 
 export type StoneMaterialType = 'natur' | 'dekton' | 'neolith';
+export type DocumentType = 'angebot' | 'kostenvoranschlag';
 
 export interface Stone {
   id: string;
@@ -80,6 +81,11 @@ export interface AppConfig {
   pdfAnschlussText: string;
   pdfAnschlussRabattText: string;
   pdfNachtext: string;
+  pdfKuechenTextKV?: string;
+  pdfBallerinaTextKV?: string;
+  pdfAnschlussTextKV?: string;
+  pdfAnschlussRabattTextKV?: string;
+  pdfNachtextKV?: string;
   pdfFooter: string;
   importMiele: string;
   importSpuele: string;
@@ -137,6 +143,8 @@ export interface KitchenVersionOption {
 }
 
 export interface Kitchen {
+  docType?: DocumentType;
+  kostenItems?: KitchenItem[];
   offerId: string | null;
   kunde: string;
   beraterId: string;
@@ -179,6 +187,7 @@ export interface Offer {
   parentOfferId?: string;    // ID of the root/family offer
   version?: number;          // Version index (1, 2, 3...)
   versionComment?: string;   // Optional version description / changes
+  docType?: DocumentType;
 }
 
 export interface UserProfile {
@@ -293,6 +302,11 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
     pdfAnschlussText: "Die Anschlüsse für Wasser und Elektro werden separat in Höhe von 240,- EUR mit unserem zertifizierten Monteur vor Ort abgerechnet.",
     pdfAnschlussRabattText: "Damit Sie effektiv keinen Mehrpreis haben, ziehe ich Ihnen diese Summe immer vom Endpreis ab.",
     pdfNachtext: "Wir hoffen, unser Angebot sagt Ihnen zu und stehen für Rückfragen jederzeit gerne zur Verfügung.",
+    pdfKuechenTextKV: "Vielen Dank für Ihre Anfrage. Nachfolgend erhalten Sie den gewünschten Kostenvoranschlag für Ihr Projekt.",
+    pdfBallerinaTextKV: "Qualität & Ausführung: Alle Arbeiten und Materialien entsprechen den aktuellen Qualitäts- und Handwerksstandards.",
+    pdfAnschlussTextKV: "Die Anschlüsse für Wasser und Elektro werden separat mit unserem zertifizierten Monteur vor Ort abgerechnet.",
+    pdfAnschlussRabattTextKV: "Damit Sie effektiv keinen Mehrpreis haben, ziehen wir diese Summe vom Endpreis ab.",
+    pdfNachtextKV: "Wir hoffen, unser Kostenvoranschlag sagt Ihnen zu und stehen für Rückfragen jederzeit gerne zur Verfügung.",
     pdfFooter: "Musterfirma GmbH | Musterstraße 1 | 12345 Musterstadt\nTelefon: 01234 56789 | E-Mail: info@musterfirma.de | Web: www.musterfirma.de",
     importMiele: "miele, miele class",
     importSpuele: "blanco, systemceram",

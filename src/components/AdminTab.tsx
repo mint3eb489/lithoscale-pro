@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Stone, AppConfig, Berater, UserProfile, getBlancoChoiceArticleList, getStoneMaterial, StoneMaterialType } from '../types';
+import { Stone, AppConfig, Berater, UserProfile, getBlancoChoiceArticleList, getStoneMaterial, StoneMaterialType, DEFAULTS } from '../types';
 import { resolveStoneImageUrl } from '../utils/imageUtils';
 import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown, Percent, Tag, PlusCircle, Check, ListPlus } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -229,6 +229,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
 
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null);
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+  const [kitchenTextDocType, setKitchenTextDocType] = useState<'angebot' | 'kostenvoranschlag'>('angebot');
 
   const [newBlancoArtInput, setNewBlancoArtInput] = useState('');
   const [showBlancoRawInput, setShowBlancoRawInput] = useState(false);
@@ -830,11 +831,43 @@ export const AdminTab: React.FC<AdminTabProps> = ({
       {activeAdminTab === 'admin-kitchen' && (
         <div id="admin-kitchen" className="grid grid-cols-1 gap-6 items-stretch">
           <div className="card p-6 space-y-6">
-            <div>
-              <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">Standard-Texte für das Angebot (PDF)</h3>
-              <p className="text-[9px] text-blue-500 mb-4 font-bold">Tipp: HTML-Tags wie &lt;b&gt;fett&lt;/b&gt;, &lt;i&gt;kursiv&lt;/i&gt; werden unterstützt.</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-zinc-800/80 pb-4">
+              <div>
+                <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.2em] mb-1">
+                  Standard-Texte für {kitchenTextDocType === 'kostenvoranschlag' ? 'den Kostenvoranschlag' : 'das Angebot'} (PDF)
+                </h3>
+                <p className="text-[9px] text-blue-500 font-bold">
+                  Tipp: HTML-Tags wie &lt;b&gt;fett&lt;/b&gt;, &lt;i&gt;kursiv&lt;/i&gt; werden unterstützt.
+                </p>
+              </div>
+
+              {/* Toggle Angebot vs Kostenvoranschlag */}
+              <div className="inline-flex p-1 bg-slate-100 dark:bg-black/60 rounded-xl border border-slate-200 dark:border-darkBorder shadow-xs self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setKitchenTextDocType('angebot')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    kitchenTextDocType === 'angebot'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Angebot
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setKitchenTextDocType('kostenvoranschlag')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                    kitchenTextDocType === 'kostenvoranschlag'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Kostenvoranschlag
+                </button>
+              </div>
             </div>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">PDF Logo (URL / Base64 / Dateiname)</label>
@@ -847,53 +880,114 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                 />
               </div>
 
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Küchen-Einleitungstext</label>
-                <textarea
-                  value={config.pdfKuechenText || ''}
-                  onChange={(e) => onUpdateConfig('pdfKuechenText', e.target.value)}
-                  className="input-field input-field-compact text-xs min-h-[80px] resize-y"
-                />
-              </div>
+              {kitchenTextDocType === 'angebot' ? (
+                <>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Küchen-Einleitungstext (Angebot)</label>
+                    <textarea
+                      value={config.pdfKuechenText || ''}
+                      onChange={(e) => onUpdateConfig('pdfKuechenText', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[80px] resize-y"
+                      placeholder="Einleitungstext für das Angebot..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Ballerina Qualitätstext (Angebot)</label>
+                    <textarea
+                      value={config.pdfBallerinaText || ''}
+                      onChange={(e) => onUpdateConfig('pdfBallerinaText', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[100px] resize-y"
+                      placeholder="Qualitätstext zum Hersteller..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Anschluss-Service Text (Angebot - 240,- EUR)</label>
+                    <textarea
+                      value={config.pdfAnschlussText || ''}
+                      onChange={(e) => onUpdateConfig('pdfAnschlussText', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[60px] resize-y"
+                      placeholder="Hinweis auf separaten Monteur vor Ort..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Anschluss-Rabatt Text (Angebot)</label>
+                    <textarea
+                      value={config.pdfAnschlussRabattText || ''}
+                      onChange={(e) => onUpdateConfig('pdfAnschlussRabattText', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[60px] resize-y"
+                      placeholder="Erklärung zum Ausgleich des Anschluss-Services..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Nachtext / Verabschiedung (Angebot)</label>
+                    <textarea
+                      value={config.pdfNachtext || ''}
+                      onChange={(e) => onUpdateConfig('pdfNachtext', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[60px] resize-y"
+                      placeholder="Schlussworte für das Angebot..."
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Einleitungstext (Kostenvoranschlag)</label>
+                    <textarea
+                      value={config.pdfKuechenTextKV !== undefined ? config.pdfKuechenTextKV : (DEFAULTS.config.pdfKuechenTextKV || '')}
+                      onChange={(e) => onUpdateConfig('pdfKuechenTextKV', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[80px] resize-y"
+                      placeholder="Einleitungstext für den Kostenvoranschlag..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Qualitätstext / Ausführungshinweise (Kostenvoranschlag)</label>
+                    <textarea
+                      value={config.pdfBallerinaTextKV !== undefined ? config.pdfBallerinaTextKV : (DEFAULTS.config.pdfBallerinaTextKV || '')}
+                      onChange={(e) => onUpdateConfig('pdfBallerinaTextKV', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[100px] resize-y"
+                      placeholder="Hinweise zur Qualität und Ausführung für den Kostenvoranschlag..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Anschluss-Service Text (Kostenvoranschlag)</label>
+                    <textarea
+                      value={config.pdfAnschlussTextKV !== undefined ? config.pdfAnschlussTextKV : (DEFAULTS.config.pdfAnschlussTextKV || '')}
+                      onChange={(e) => onUpdateConfig('pdfAnschlussTextKV', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[60px] resize-y"
+                      placeholder="Hinweis zur separaten Abrechnung vor Ort..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Anschluss-Rabatt Text (Kostenvoranschlag)</label>
+                    <textarea
+                      value={config.pdfAnschlussRabattTextKV !== undefined ? config.pdfAnschlussRabattTextKV : (DEFAULTS.config.pdfAnschlussRabattTextKV || '')}
+                      onChange={(e) => onUpdateConfig('pdfAnschlussRabattTextKV', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[60px] resize-y"
+                      placeholder="Rabatt-Hinweis für Kostenvoranschläge..."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Nachtext / Verabschiedung (Kostenvoranschlag)</label>
+                    <textarea
+                      value={config.pdfNachtextKV !== undefined ? config.pdfNachtextKV : (DEFAULTS.config.pdfNachtextKV || '')}
+                      onChange={(e) => onUpdateConfig('pdfNachtextKV', e.target.value)}
+                      className="input-field input-field-compact text-xs min-h-[60px] resize-y"
+                      placeholder="Schlussworte für den Kostenvoranschlag..."
+                    />
+                  </div>
+                </>
+              )}
 
               <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Ballerina Qualitätstext</label>
-                <textarea
-                  value={config.pdfBallerinaText || ''}
-                  onChange={(e) => onUpdateConfig('pdfBallerinaText', e.target.value)}
-                  className="input-field input-field-compact text-xs min-h-[100px] resize-y"
-                />
-              </div>
-
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Anschluss-Service Text (240,- EUR)</label>
-                <textarea
-                  value={config.pdfAnschlussText || ''}
-                  onChange={(e) => onUpdateConfig('pdfAnschlussText', e.target.value)}
-                  className="input-field input-field-compact text-xs min-h-[60px] resize-y"
-                />
-              </div>
-
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Anschluss-Rabatt Text</label>
-                <textarea
-                  value={config.pdfAnschlussRabattText || ''}
-                  onChange={(e) => onUpdateConfig('pdfAnschlussRabattText', e.target.value)}
-                  className="input-field input-field-compact text-xs min-h-[60px] resize-y"
-                />
-              </div>
-
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Nachtext / Verabschiedung</label>
-                <textarea
-                  value={config.pdfNachtext || ''}
-                  onChange={(e) => onUpdateConfig('pdfNachtext', e.target.value)}
-                  className="input-field input-field-compact text-xs min-h-[60px] resize-y"
-                />
-              </div>
-
-              <div>
-                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Fußzeile (Firmenangaben)</label>
+                <label className="text-[9px] font-black text-slate-500 uppercase block mb-1">Fußzeile (Firmenangaben - für alle PDFs)</label>
                 <textarea
                   value={config.pdfFooter || ''}
                   onChange={(e) => onUpdateConfig('pdfFooter', e.target.value)}
