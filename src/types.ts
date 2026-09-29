@@ -147,6 +147,9 @@ export interface Kitchen {
   kostenItems?: KitchenItem[];
   offerId: string | null;
   kunde: string;
+  kundeAdresse?: string;
+  kundeStrasse?: string;
+  kundePlzOrt?: string;
   beraterId: string;
   front1: string;
   front2: string;
@@ -176,6 +179,9 @@ export interface Kitchen {
 export interface Offer {
   id: string;
   kunde: string;
+  kundeAdresse?: string;
+  kundeStrasse?: string;
+  kundePlzOrt?: string;
   beraterId: string;
   timestamp: number;
   totalVK: number;

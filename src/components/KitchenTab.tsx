@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Kitchen, AppConfig, KitchenItem, UserProfile, SavedCalculation, KitchenVersionOption } from '../types';
-import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy, Tag, Zap } from 'lucide-react';
+import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy, Tag, Zap, MapPin } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 import { resolveBeraterId, resolveBeraterName } from '../utils/beraterUtils';
 
@@ -152,9 +152,23 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
 
   // Active Kitchen object being viewed and edited in the UI
   const currentKitchen: Kitchen = activeVersionTab === 1 && opt1?.kitchenData
-    ? { ...opt1.kitchenData, kunde: opt1.kitchenData.kunde || kitchen.kunde, beraterId: opt1.kitchenData.beraterId || kitchen.beraterId }
+    ? {
+        ...opt1.kitchenData,
+        kunde: opt1.kitchenData.kunde || kitchen.kunde,
+        kundeAdresse: opt1.kitchenData.kundeAdresse ?? kitchen.kundeAdresse,
+        kundeStrasse: opt1.kitchenData.kundeStrasse ?? kitchen.kundeStrasse,
+        kundePlzOrt: opt1.kitchenData.kundePlzOrt ?? kitchen.kundePlzOrt,
+        beraterId: opt1.kitchenData.beraterId || kitchen.beraterId,
+      }
     : activeVersionTab === 2 && opt2?.kitchenData
-    ? { ...opt2.kitchenData, kunde: opt2.kitchenData.kunde || kitchen.kunde, beraterId: opt2.kitchenData.beraterId || kitchen.beraterId }
+    ? {
+        ...opt2.kitchenData,
+        kunde: opt2.kitchenData.kunde || kitchen.kunde,
+        kundeAdresse: opt2.kitchenData.kundeAdresse ?? kitchen.kundeAdresse,
+        kundeStrasse: opt2.kitchenData.kundeStrasse ?? kitchen.kundeStrasse,
+        kundePlzOrt: opt2.kitchenData.kundePlzOrt ?? kitchen.kundePlzOrt,
+        beraterId: opt2.kitchenData.beraterId || kitchen.beraterId,
+      }
     : kitchen;
 
   const isKostenvoranschlag = (activeDocType || currentKitchen.docType || 'angebot') === 'kostenvoranschlag';
@@ -775,6 +789,80 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                   </select>
                 );
               })()}
+            </div>
+          </div>
+
+          {/* Kundenadresse: Straße (links) & PLZ und Wohnort (rechts) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+            <div>
+              <label className="text-[9px] font-black text-slate-650 dark:text-slate-300 uppercase flex items-center gap-1.5 mb-1">
+                <MapPin className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                <span>Straße</span>
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={currentKitchen.kundeStrasse !== undefined ? currentKitchen.kundeStrasse : (currentKitchen.kundeAdresse ? currentKitchen.kundeAdresse.split('\n')[0] : '')}
+                  onChange={(e) => {
+                    const strasse = e.target.value;
+                    const plzOrt = currentKitchen.kundePlzOrt !== undefined ? currentKitchen.kundePlzOrt : (currentKitchen.kundeAdresse ? currentKitchen.kundeAdresse.split('\n').slice(1).join(' ') : '');
+                    updateField('kundeStrasse', strasse);
+                    updateField('kundeAdresse', [strasse, plzOrt].filter(Boolean).join('\n'));
+                  }}
+                  className={`input-field input-field-compact text-xs text-slate-900 dark:text-white ${activeVersionTab !== 0 ? 'pr-7' : ''}`}
+                  placeholder="Straße & Hausnummer"
+                />
+                {activeVersionTab !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const basisStrasse = kitchen.kundeStrasse !== undefined ? kitchen.kundeStrasse : (kitchen.kundeAdresse ? kitchen.kundeAdresse.split('\n')[0] : '');
+                      const currentPlz = currentKitchen.kundePlzOrt !== undefined ? currentKitchen.kundePlzOrt : '';
+                      updateField('kundeStrasse', basisStrasse || '');
+                      updateField('kundeAdresse', [basisStrasse || '', currentPlz].filter(Boolean).join('\n'));
+                    }}
+                    className="absolute right-1.5 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 p-1 rounded transition-colors cursor-pointer"
+                    title="Aus Hauptauftrag übernehmen"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[9px] font-black text-slate-650 dark:text-slate-300 uppercase block mb-1">
+                PLZ und Wohnort
+              </label>
+              <div className="relative flex items-center">
+                <input
+                  type="text"
+                  value={currentKitchen.kundePlzOrt !== undefined ? currentKitchen.kundePlzOrt : (currentKitchen.kundeAdresse ? currentKitchen.kundeAdresse.split('\n').slice(1).join(' ') : '')}
+                  onChange={(e) => {
+                    const plzOrt = e.target.value;
+                    const strasse = currentKitchen.kundeStrasse !== undefined ? currentKitchen.kundeStrasse : (currentKitchen.kundeAdresse ? currentKitchen.kundeAdresse.split('\n')[0] : '');
+                    updateField('kundePlzOrt', plzOrt);
+                    updateField('kundeAdresse', [strasse, plzOrt].filter(Boolean).join('\n'));
+                  }}
+                  className={`input-field input-field-compact text-xs text-slate-900 dark:text-white ${activeVersionTab !== 0 ? 'pr-7' : ''}`}
+                  placeholder="PLZ & Ort"
+                />
+                {activeVersionTab !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const basisPlz = kitchen.kundePlzOrt !== undefined ? kitchen.kundePlzOrt : (kitchen.kundeAdresse ? kitchen.kundeAdresse.split('\n').slice(1).join(' ') : '');
+                      const currentStr = currentKitchen.kundeStrasse !== undefined ? currentKitchen.kundeStrasse : '';
+                      updateField('kundePlzOrt', basisPlz || '');
+                      updateField('kundeAdresse', [currentStr, basisPlz || ''].filter(Boolean).join('\n'));
+                    }}
+                    className="absolute right-1.5 text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 p-1 rounded transition-colors cursor-pointer"
+                    title="Aus Hauptauftrag übernehmen"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

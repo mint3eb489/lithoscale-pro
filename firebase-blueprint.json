@@ -35,6 +35,9 @@
       "properties": {
         "id": { "type": "string" },
         "kunde": { "type": "string" },
+        "kundeAdresse": { "type": "string", "description": "Customer address / project address", "maxLength": 500 },
+        "kundeStrasse": { "type": "string", "description": "Customer street and house number", "maxLength": 200 },
+        "kundePlzOrt": { "type": "string", "description": "Customer postal code and city", "maxLength": 200 },
         "beraterId": { "type": "string" },
         "timestamp": { "type": "integer" },
         "totalVK": { "type": "number" },

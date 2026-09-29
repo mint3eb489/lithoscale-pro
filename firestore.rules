@@ -55,6 +55,9 @@ service cloud.firestore {
           && data.id is string
           && data.kunde is string
           && data.kunde.size() <= 200
+          && (!data.keys().hasAny(['kundeAdresse']) || (data.kundeAdresse is string && data.kundeAdresse.size() <= 500))
+          && (!data.keys().hasAny(['kundeStrasse']) || (data.kundeStrasse is string && data.kundeStrasse.size() <= 200))
+          && (!data.keys().hasAny(['kundePlzOrt']) || (data.kundePlzOrt is string && data.kundePlzOrt.size() <= 200))
           && data.timestamp is int
           && data.totalVK is number
           && data.kitchen is map;

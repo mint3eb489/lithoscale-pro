@@ -201,18 +201,97 @@ export async function generateKitchenPDF(
       year: 'numeric'
     }).format(new Date());
 
+    const strasseVal = (k.kundeStrasse || '').trim();
+    const plzOrtVal = (k.kundePlzOrt || '').trim();
+
+    let adresseLines: string[] = [];
+    if (strasseVal || plzOrtVal) {
+      if (strasseVal) adresseLines.push(strasseVal);
+      if (plzOrtVal) adresseLines.push(plzOrtVal);
+    } else if (k.kundeAdresse) {
+      adresseLines = k.kundeAdresse
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+    }
+
+    let customerAndMetaSection: any;
+    if (adresseLines.length > 0) {
+      const recipientStack: any[] = [];
+
+      if (k.kunde && k.kunde.trim() !== '') {
+        recipientStack.push({
+          text: k.kunde.trim(),
+          fontSize: 12,
+          bold: true,
+          color: '#1e293b',
+          margin: [0, 0, 0, 2]
+        });
+      }
+
+      adresseLines.forEach((line) => {
+        recipientStack.push({
+          text: line,
+          fontSize: 10,
+          color: '#334155',
+          margin: [0, 1, 0, 0]
+        });
+      });
+
+      const metaStackRight: any[] = [
+        { text: `Datum: ${currentDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right' }
+      ];
+
+      if (beraterObj && beraterObj.name) {
+        metaStackRight.push({
+          text: `Ihr Berater: ${beraterObj.name}`,
+          fontSize: 10,
+          bold: true,
+          color: '#334155',
+          alignment: 'right',
+          margin: [0, 4, 0, 0]
+        });
+        let line2Parts: string[] = [];
+        if (beraterObj.phone) line2Parts.push(`Tel: ${beraterObj.phone}`);
+        if (beraterObj.email) line2Parts.push(`E-Mail: ${beraterObj.email}`);
+        if (line2Parts.length > 0) {
+          metaStackRight.push({
+            text: line2Parts.join(' | '),
+            fontSize: 9,
+            color: '#64748b',
+            alignment: 'right',
+            margin: [0, 1, 0, 0]
+          });
+        }
+      }
+
+      customerAndMetaSection = {
+        columns: [
+          { stack: recipientStack, width: '*' },
+          { stack: metaStackRight, width: 'auto' }
+        ],
+        margin: [0, 0, 0, 18]
+      };
+    } else {
+      customerAndMetaSection = {
+        stack: [
+          {
+            columns: [
+              k.kunde && k.kunde.trim() !== ''
+                ? { text: `Projekt / Kommission: ${k.kunde}`, fontSize: 12, bold: true, color: '#2563eb', width: '*' }
+                : { text: isKostenvoranschlag ? 'Kostenvoranschlag' : 'Ihre neue Traumküche', fontSize: 12, color: '#64748b', width: '*' },
+              { text: `Datum: ${currentDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
+            ],
+            margin: [0, 0, 0, 15]
+          },
+          beraterBlock
+        ]
+      };
+    }
+
     const contentList: any[] = [
       { columns: headerColumns, margin: [0, 0, 0, 15] },
-      {
-        columns: [
-          k.kunde && k.kunde.trim() !== ''
-            ? { text: `Projekt / Kommission: ${k.kunde}`, fontSize: 12, bold: true, color: '#2563eb', width: '*' }
-            : { text: isKostenvoranschlag ? 'Kostenvoranschlag' : 'Ihre neue Traumküche', fontSize: 12, color: '#64748b', width: '*' },
-          { text: `Datum: ${currentDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
-        ],
-        margin: [0, 0, 0, 15]
-      },
-      beraterBlock,
+      customerAndMetaSection,
       k.optKuechenText && pdfKuechenText ? {
         text: parseHTML(pdfKuechenText),
         margin: [0, 0, 0, 20],

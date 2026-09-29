@@ -87,6 +87,9 @@ export default function App() {
     kostenItems: [{ id: Date.now(), name: '', val: '' }],
     offerId: null,
     kunde: '',
+    kundeAdresse: '',
+    kundeStrasse: '',
+    kundePlzOrt: '',
     beraterId: defaultBeraterId,
     front1: '',
     front2: '',
@@ -319,7 +322,7 @@ export default function App() {
   const [activeFolderFilter, setActiveFolderFilter] = useState<string>('all');
   const [customFolders, setCustomFolders] = useState<string[]>([]);
   const [expandedFamilies, setExpandedFamilies] = useState<Record<string, boolean>>({});
-  const [openFolderMenuFamilyId, setOpenFolderMenuFamilyId] = useState<string | null>(null);
+  const [folderModalOffer, setFolderModalOffer] = useState<Offer | null>(null);
 
   const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
   const [lightboxImg, setLightboxImg] = useState<string>('');
@@ -916,6 +919,9 @@ export default function App() {
     const offerData: Offer = {
       id: targetOfferId,
       kunde: kitchen.kunde.trim(),
+      kundeAdresse: kitchen.kundeAdresse?.trim() || [kitchen.kundeStrasse?.trim(), kitchen.kundePlzOrt?.trim()].filter(Boolean).join('\n'),
+      kundeStrasse: kitchen.kundeStrasse?.trim() || '',
+      kundePlzOrt: kitchen.kundePlzOrt?.trim() || '',
       beraterId: kitchen.beraterId,
       timestamp: Date.now(),
       totalVK: effectiveVK,
@@ -1152,11 +1158,19 @@ export default function App() {
     const label = isKV ? 'Kostenvoranschlag' : 'Angebot';
     requestConfirm(`${label} laden?`, `Möchtest du ${label === 'Kostenvoranschlag' ? 'den' : 'das'} ${label} für "${o.kunde}" laden? Aktuelle Daten auf dieser Seite werden überschrieben.`, () => {
       const loadedBeraterId = resolveBeraterId(o.kitchen?.beraterId || o.beraterId, usersList, userProfile, config.beraterList);
+      const rawAdresse = o.kitchen?.kundeAdresse || o.kundeAdresse || '';
+      const rawLines = rawAdresse.split('\n');
+      const loadedStrasse = o.kitchen?.kundeStrasse || (o as any).kundeStrasse || rawLines[0] || '';
+      const loadedPlzOrt = o.kitchen?.kundePlzOrt || (o as any).kundePlzOrt || rawLines.slice(1).join(' ') || '';
+
       if (isKV) {
         setActiveKitchenDocType('kostenvoranschlag');
         setKvKitchen({
           ...createDefaultKitchen('kostenvoranschlag', loadedBeraterId),
           ...o.kitchen,
+          kundeAdresse: rawAdresse,
+          kundeStrasse: loadedStrasse,
+          kundePlzOrt: loadedPlzOrt,
           docType: 'kostenvoranschlag',
           kostenItems: (o.kitchen?.kostenItems && o.kitchen.kostenItems.length > 0) ? o.kitchen.kostenItems : [{ id: Date.now(), name: '', val: '' }],
           beraterId: loadedBeraterId,
@@ -1166,6 +1180,9 @@ export default function App() {
         setAngebotKitchen({
           ...createDefaultKitchen('angebot', loadedBeraterId),
           ...o.kitchen,
+          kundeAdresse: rawAdresse,
+          kundeStrasse: loadedStrasse,
+          kundePlzOrt: loadedPlzOrt,
           docType: 'angebot',
           kostenItems: (o.kitchen?.kostenItems && o.kitchen.kostenItems.length > 0) ? o.kitchen.kostenItems : [{ id: Date.now(), name: '', val: '' }],
           beraterId: loadedBeraterId,
@@ -2064,44 +2081,14 @@ export default function App() {
     return true;
   });
 
-  // 3. Group into families
-  const familiesMap: Record<string, Offer[]> = {};
-  filteredOffers.forEach((o) => {
-    const famId = o.parentOfferId || o.id;
-    if (!familiesMap[famId]) familiesMap[famId] = [];
-    familiesMap[famId].push(o);
-  });
-
-  interface FamilyItem {
-    familyId: string;
-    kunde: string;
-    latestOffer: Offer;
-    versions: Offer[];
-  }
-
-  const familiesList: FamilyItem[] = Object.entries(familiesMap).map(([famId, list]) => {
-    const sorted = [...list].sort((a, b) => {
-      const vA = a.version || 1;
-      const vB = b.version || 1;
-      if (vA !== vB) return vB - vA;
-      return (b.timestamp || 0) - (a.timestamp || 0);
-    });
-    return {
-      familyId: famId,
-      kunde: sorted[0].kunde,
-      latestOffer: sorted[0],
-      versions: sorted,
-    };
-  });
-
-  // 4. Sort families
-  const sortedFamilies = familiesList.sort((a, b) => {
+  // 3. Sort filtered offers
+  const sortedOffers = [...filteredOffers].sort((a, b) => {
     if (offerSort === 'berater') {
-      const nameA = resolveBeraterName(a.latestOffer.kitchen?.beraterId || a.latestOffer.beraterId, usersList, userProfile, config.beraterList);
-      const nameB = resolveBeraterName(b.latestOffer.kitchen?.beraterId || b.latestOffer.beraterId, usersList, userProfile, config.beraterList);
+      const nameA = resolveBeraterName(a.kitchen?.beraterId || a.beraterId, usersList, userProfile, config.beraterList);
+      const nameB = resolveBeraterName(b.kitchen?.beraterId || b.beraterId, usersList, userProfile, config.beraterList);
       return nameA.localeCompare(nameB, 'de', { sensitivity: 'base' });
     }
-    return (b.latestOffer.timestamp || 0) - (a.latestOffer.timestamp || 0);
+    return (b.timestamp || 0) - (a.timestamp || 0);
   });
 
   const existingFolders = Array.from(new Set(visibleOffers.map(o => (o.folder || '').trim()).filter(Boolean)))
@@ -2602,7 +2589,7 @@ export default function App() {
 
                   {/* Scrollable list items */}
                   <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-                    {sortedFamilies.length === 0 ? (
+                    {sortedOffers.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-16 text-slate-400">
                         <Folder className="w-12 h-12 stroke-1 text-slate-350 dark:text-slate-700 mb-3" />
                         <p className="text-sm font-bold">
@@ -2613,294 +2600,92 @@ export default function App() {
                         </p>
                       </div>
                     ) : (
-                      sortedFamilies.map((fam, famIdx) => {
-                        const lat = fam.latestOffer;
-                        const beraterName = resolveBeraterName(lat.kitchen?.beraterId || lat.beraterId, usersList, userProfile, config.beraterList);
-                        const isExpanded = !!expandedFamilies[fam.familyId];
-                        const olderVersions = fam.versions.slice(1);
+                      sortedOffers.map((off, offIdx) => {
+                        const beraterName = resolveBeraterName(off.kitchen?.beraterId || off.beraterId, usersList, userProfile, config.beraterList);
 
                         return (
                           <div
-                            key={`fam-${fam.familyId || famIdx}-${famIdx}`}
-                            className={`bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-2xl transition-all duration-300 shadow-sm hover:border-blue-500/60 ${openFolderMenuFamilyId === fam.familyId ? 'z-30 overflow-visible' : 'overflow-hidden'}`}
+                            key={`off-${off.id || offIdx}-${offIdx}`}
+                            className="bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-2xl transition-all duration-300 shadow-sm hover:border-blue-500/60 overflow-hidden"
                           >
-                            {/* PRIMARY CARD ROW (LATEST VERSION) */}
                             <div className="p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white/50 dark:bg-[#121214]/50">
                               <div className="flex-1 min-w-0">
                                 <div className="flex flex-wrap items-center gap-2 mb-1">
                                   <h3 className="font-extrabold text-slate-800 dark:text-white text-base tracking-tight leading-none mr-1">
-                                    {fam.kunde}
+                                    {off.kunde}
                                   </h3>
                                   
-                                  {/* Active Version badge */}
+                                  {/* Version badge */}
                                   <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
-                                    V{(lat.version || 1)}
+                                    V{(off.version || 1)}
                                   </span>
 
-                                  {/* Assigned Folder Tag if present */}
-                                  {lat.folder && (
-                                    <span 
-                                      className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer hover:bg-amber-500/20 transition-colors"
-                                      onClick={() => setActiveFolderFilter(lat.folder)}
-                                      title={`Ordner „${lat.folder}“ filtern`}
-                                    >
-                                      <Folder className="w-2.5 h-2.5 shrink-0" />
-                                      <span className="max-w-[130px] truncate">{lat.folder}</span>
-                                    </span>
-                                  )}
-
                                   {/* Comment preview if exists */}
-                                  {lat.versionComment && (
-                                    <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-zinc-800 px-2 py-0.5 rounded-full max-w-xs truncate" title={lat.versionComment}>
-                                      "{lat.versionComment}"
+                                  {off.versionComment && (
+                                    <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-zinc-800 px-2 py-0.5 rounded-full max-w-xs truncate" title={off.versionComment}>
+                                      "{off.versionComment}"
                                     </span>
                                   )}
                                 </div>
 
+                                {/* Address preview if exists */}
+                                {(() => {
+                                  const displayAddress = [
+                                    off.kundeStrasse || off.kitchen?.kundeStrasse,
+                                    off.kundePlzOrt || off.kitchen?.kundePlzOrt,
+                                  ].filter(Boolean).join(', ') || (off.kundeAdresse || off.kitchen?.kundeAdresse)?.replace(/\n/g, ', ');
+                                  if (!displayAddress) return null;
+                                  return (
+                                    <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 mb-1 truncate max-w-md" title={displayAddress}>
+                                      <span className="text-blue-500 shrink-0">📍</span>
+                                      <span className="truncate">{displayAddress}</span>
+                                    </div>
+                                  );
+                                })()}
+
                                 <div className="flex items-center gap-3 text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none mt-1">
-                                  <span>{new Date(lat.timestamp).toLocaleDateString()}</span>
+                                  <span>{new Date(off.timestamp).toLocaleDateString()}</span>
                                   <span>•</span>
                                   <span className="text-blue-500">{beraterName || 'Ohne Berater'}</span>
                                   <span>•</span>
                                   <span className="text-emerald-500 font-black">
-                                    {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(lat.totalVK)}
+                                    {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(off.totalVK)}
                                   </span>
                                 </div>
                               </div>
 
-                              {/* Primary Card Actions */}
+                              {/* Actions */}
                               <div className="flex items-center gap-2 shrink-0 w-full md:w-auto justify-end">
-                                {/* EXPAND OLDER VERSIONS BUTTON */}
-                                {olderVersions.length > 0 && (
-                                  <button
-                                    onClick={() => setExpandedFamilies(prev => ({ ...prev, [fam.familyId]: !prev[fam.familyId] }))}
-                                    className="flex items-center gap-1 px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-xl text-[10px] font-extrabold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-zinc-850 uppercase tracking-widest cursor-pointer transition-all"
-                                  >
-                                    <History className="w-3.5 h-3.5" />
-                                    <span>Verlauf ({olderVersions.length})</span>
-                                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                                  </button>
-                                )}
-
-                                {/* ORDNER BUTTON LINKS NEBEN LADEN */}
-                                <div className="relative">
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenFolderMenuFamilyId(openFolderMenuFamilyId === fam.familyId ? null : fam.familyId)}
-                                    className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
-                                      lat.folder
-                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20'
-                                        : 'border-slate-200 dark:border-zinc-800 hover:border-blue-500/50 hover:bg-slate-100 dark:hover:bg-zinc-850 text-slate-700 dark:text-slate-200'
-                                    }`}
-                                    title={lat.folder ? `Ordner: ${lat.folder}` : 'Ordner'}
-                                  >
-                                    <Folder className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Ordner</span>
-                                  </button>
-
-                                  {openFolderMenuFamilyId === fam.familyId && (
-                                    <>
-                                      <div 
-                                        className="fixed inset-0 z-40" 
-                                        onClick={() => setOpenFolderMenuFamilyId(null)} 
-                                      />
-                                      <div className="absolute right-0 top-full mt-1.5 w-64 bg-white dark:bg-[#18181c] border border-slate-200 dark:border-zinc-750 rounded-2xl shadow-2xl p-2 z-50 text-left">
-                                        {lat.folder ? (
-                                          <>
-                                            <div className="p-1">
-                                              <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 py-1">
-                                                Aktueller Ordner:
-                                              </div>
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  setActiveFolderFilter(lat.folder);
-                                                  setOpenFolderMenuFamilyId(null);
-                                                }}
-                                                className="w-full text-left px-2.5 py-2 rounded-xl font-bold text-xs flex items-center gap-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors cursor-pointer"
-                                              >
-                                                <FolderOpen className="w-4 h-4 shrink-0 text-blue-500" />
-                                                <span className="truncate">Ordner „{lat.folder}“ öffnen</span>
-                                              </button>
-                                            </div>
-
-                                            <div className="border-t border-slate-200 dark:border-zinc-800 my-1" />
-
-                                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 py-1">
-                                              Anderem Ordner zuweisen:
-                                            </div>
-                                            <div className="max-h-40 overflow-y-auto space-y-0.5 px-0.5">
-                                              {dbFolders.filter(f => f !== lat.folder).length === 0 ? (
-                                                <div className="text-[11px] text-slate-400 px-2 py-1 italic">
-                                                  Keine weiteren Ordner vorhanden
-                                                </div>
-                                              ) : (
-                                                dbFolders.filter(f => f !== lat.folder).map(fName => (
-                                                  <button
-                                                    key={`assign-${fam.familyId}-${fName}`}
-                                                    type="button"
-                                                    onClick={async () => {
-                                                      setOpenFolderMenuFamilyId(null);
-                                                      await moveOfferFamilyToFolder(fam.familyId, fName);
-                                                    }}
-                                                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors cursor-pointer truncate"
-                                                  >
-                                                    <Folder className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                                    <span className="truncate">{fName}</span>
-                                                  </button>
-                                                ))
-                                              )}
-                                            </div>
-
-                                            <div className="border-t border-slate-200 dark:border-zinc-800 my-1" />
-
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setOpenFolderMenuFamilyId(null);
-                                                moveOfferFamilyToFolder(fam.familyId, '__NEW__');
-                                              }}
-                                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 transition-colors cursor-pointer"
-                                            >
-                                              <Plus className="w-3.5 h-3.5 shrink-0" />
-                                              <span>Neuer Ordner...</span>
-                                            </button>
-
-                                            <button
-                                              type="button"
-                                              onClick={async () => {
-                                                setOpenFolderMenuFamilyId(null);
-                                                await moveOfferFamilyToFolder(fam.familyId, '');
-                                              }}
-                                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer"
-                                            >
-                                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                              <span>Aus Ordner entfernen</span>
-                                            </button>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 py-1">
-                                              Ordner zuweisen:
-                                            </div>
-                                            <div className="max-h-48 overflow-y-auto space-y-0.5 px-0.5">
-                                              {dbFolders.length === 0 ? (
-                                                <div className="text-[11px] text-slate-400 px-2 py-2 italic">
-                                                  Noch keine Ordner angelegt
-                                                </div>
-                                              ) : (
-                                                dbFolders.map(fName => (
-                                                  <button
-                                                    key={`assign-${fam.familyId}-${fName}`}
-                                                    type="button"
-                                                    onClick={async () => {
-                                                      setOpenFolderMenuFamilyId(null);
-                                                      await moveOfferFamilyToFolder(fam.familyId, fName);
-                                                    }}
-                                                    className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-800 flex items-center gap-2 transition-colors cursor-pointer truncate"
-                                                  >
-                                                    <Folder className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                                    <span className="truncate">{fName}</span>
-                                                  </button>
-                                                ))
-                                              )}
-                                            </div>
-
-                                            <div className="border-t border-slate-200 dark:border-zinc-800 my-1" />
-
-                                            <button
-                                              type="button"
-                                              onClick={() => {
-                                                setOpenFolderMenuFamilyId(null);
-                                                moveOfferFamilyToFolder(fam.familyId, '__NEW__');
-                                              }}
-                                              className="w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 transition-colors cursor-pointer"
-                                            >
-                                              <Plus className="w-3.5 h-3.5 shrink-0" />
-                                              <span>Neuer Ordner...</span>
-                                            </button>
-                                          </>
-                                        )}
-                                      </div>
-                                    </>
-                                  )}
-                                </div>
+                                {/* ORDNER BUTTON LINKS NEBEN LADEN (ORANGE WENN IN ORDNER) */}
+                                <button
+                                  type="button"
+                                  onClick={() => setFolderModalOffer(off)}
+                                  className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95 ${
+                                    off.folder
+                                      ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-500 shadow-sm shadow-amber-500/20'
+                                      : 'border-slate-200 dark:border-zinc-800 hover:border-blue-500/50 hover:bg-slate-100 dark:hover:bg-zinc-850 text-slate-700 dark:text-slate-200'
+                                  }`}
+                                  title={off.folder ? `Ordner: ${off.folder}` : 'Ordner zuweisen'}
+                                >
+                                  <Folder className="w-3.5 h-3.5 shrink-0" />
+                                  <span>Ordner</span>
+                                </button>
 
                                 <button
-                                  onClick={() => loadOffer(lat.id)}
+                                  onClick={() => loadOffer(off.id)}
                                   className="bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:scale-[1.02] active:scale-95 transition-all cursor-pointer"
                                 >
                                   Laden
                                 </button>
                                 <button
-                                  onClick={() => deleteOfferFromCloud(lat.id, `${lat.kunde} V${lat.version}`)}
+                                  onClick={() => deleteOfferFromCloud(off.id, `${off.kunde} V${off.version || 1}`)}
                                   className="text-slate-400 hover:text-red-500 p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-900 active:scale-90 transition-all cursor-pointer"
-                                  title="Diese Version löschen"
+                                  title="Dieses Angebot löschen"
                                 >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
                             </div>
-
-                            {/* COLLAPSIBLE VERSION HISTORY COMPLEMENT */}
-                            {isExpanded && olderVersions.length > 0 && (
-                              <div className="border-t border-slate-150 dark:border-zinc-900 bg-slate-50/50 dark:bg-black/25 px-4 py-3 divide-y divide-slate-100 dark:divide-zinc-900/40">
-                                {olderVersions.map((ver, verIdx) => {
-                                  const verBeraterName = resolveBeraterName(ver.kitchen?.beraterId || ver.beraterId, usersList, userProfile, config.beraterList);
-                                  return (
-                                    <div
-                                      key={`ver-${ver.id || fam.familyId || verIdx}-${verIdx}`}
-                                      className="py-2.5 flex items-center justify-between text-xs gap-4 hover:bg-slate-200/20 dark:hover:bg-white/5 px-2 rounded-xl transition-colors"
-                                    >
-                                      <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                                          <span className="text-[10px] font-black uppercase text-slate-500 bg-slate-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded">
-                                            V{ver.version || 1}
-                                          </span>
-                                          {(ver.kitchen?.docType === 'kostenvoranschlag' || ver.docType === 'kostenvoranschlag') && (
-                                            <span className="text-[9px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded">
-                                              Kostenvoranschlag
-                                            </span>
-                                          )}
-                                          {ver.versionComment && (
-                                            <span className="font-medium text-slate-600 dark:text-slate-400 italic text-[11px] truncate max-w-md">
-                                              "{ver.versionComment}"
-                                            </span>
-                                          )}
-                                        </div>
-                                        
-                                        <div className="flex items-center gap-2.5 text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
-                                          <span>{new Date(ver.timestamp).toLocaleDateString()} {new Date(ver.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                          <span>•</span>
-                                          <span>{verBeraterName || 'Ohne Berater'}</span>
-                                          <span>•</span>
-                                          <span className="text-emerald-500 font-black">
-                                            {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(ver.totalVK)}
-                                          </span>
-                                        </div>
-                                      </div>
-
-                                      {/* Older version actions */}
-                                      <div className="flex items-center gap-1 shrink-0">
-                                        <button
-                                          onClick={() => loadOffer(ver.id)}
-                                          className="text-[9px] font-black uppercase tracking-widest text-blue-500 hover:text-white hover:bg-blue-600 bg-blue-500/10 px-2.5 py-1.5 rounded-lg active:scale-95 transition-all text-center cursor-pointer"
-                                        >
-                                          Laden
-                                        </button>
-                                        <button
-                                          onClick={() => deleteOfferFromCloud(ver.id, `${ver.kunde} V${ver.version}`)}
-                                          className="text-slate-400 hover:text-red-500 p-1.5 rounded hover:bg-slate-200 dark:hover:bg-zinc-800 active:scale-90 transition-all cursor-pointer"
-                                          title="Diese Version löschen"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
                           </div>
                         );
                       })
@@ -2908,6 +2693,172 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* FOLDER ASSIGNMENT MODAL (HIGH Z-INDEX, NEVER CUT OFF, MOBILE-OPTIMIZED) */}
+        {folderModalOffer && (
+          <div className="fixed inset-0 z-[500] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+            <div 
+              className="fixed inset-0" 
+              onClick={() => setFolderModalOffer(null)} 
+            />
+            <div className="relative z-10 bg-white dark:bg-[#18181c] w-full max-w-sm rounded-3xl p-5 md:p-6 shadow-2xl border border-slate-200 dark:border-zinc-750 text-left animate-in fade-in duration-150">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 mb-3.5 border-b border-slate-200 dark:border-zinc-800 pb-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <Folder className="w-3 h-3" />
+                      Ordner
+                    </span>
+                    <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full">
+                      V{folderModalOffer.version || 1}
+                    </span>
+                  </div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base truncate">
+                    {folderModalOffer.kunde}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFolderModalOffer(null)}
+                  className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                  title="Schließen"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              {folderModalOffer.folder ? (
+                <div className="space-y-3.5">
+                  <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/25">
+                    <div className="text-[9px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">
+                      Aktuell in Ordner:
+                    </div>
+                    <div className="font-extrabold text-sm text-slate-900 dark:text-amber-200 flex items-center gap-2 mb-2.5 truncate">
+                      <Folder className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span className="truncate">{folderModalOffer.folder}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveFolderFilter(folderModalOffer.folder || '');
+                        setFolderModalOffer(null);
+                      }}
+                      className="w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 text-white bg-blue-600 hover:bg-blue-500 transition-colors cursor-pointer shadow-xs active:scale-95"
+                    >
+                      <FolderOpen className="w-4 h-4 shrink-0" />
+                      <span>Diesen Ordner im Archiv öffnen</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1.5 px-0.5">
+                      In anderen Ordner verschieben:
+                    </div>
+                    <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
+                      {dbFolders.filter(f => f !== folderModalOffer.folder).length === 0 ? (
+                        <div className="text-xs text-slate-400 py-2 italic px-1">
+                          Keine weiteren Ordner vorhanden.
+                        </div>
+                      ) : (
+                        dbFolders.filter(f => f !== folderModalOffer.folder).map(fName => (
+                          <button
+                            key={`modal-assign-${folderModalOffer.id}-${fName}`}
+                            type="button"
+                            onClick={async () => {
+                              const targetId = folderModalOffer.parentOfferId || folderModalOffer.id;
+                              setFolderModalOffer(null);
+                              await moveOfferFamilyToFolder(targetId, fName);
+                            }}
+                            className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-zinc-800 border border-slate-200/80 dark:border-zinc-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Folder className="w-4 h-4 text-slate-400 shrink-0" />
+                            <span className="truncate">{fName}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 dark:border-zinc-800 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetId = folderModalOffer.parentOfferId || folderModalOffer.id;
+                        setFolderModalOffer(null);
+                        moveOfferFamilyToFolder(targetId, '__NEW__');
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 shrink-0" />
+                      <span>Neuen Ordner erstellen...</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const targetId = folderModalOffer.parentOfferId || folderModalOffer.id;
+                        setFolderModalOffer(null);
+                        await moveOfferFamilyToFolder(targetId, '');
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-4 h-4 shrink-0" />
+                      <span>Aus Ordner entfernen</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 px-0.5">
+                      Projektordner auswählen:
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                      {dbFolders.length === 0 ? (
+                        <div className="text-xs text-slate-400 py-4 text-center italic">
+                          Noch keine Projektordner angelegt.
+                        </div>
+                      ) : (
+                        dbFolders.map(fName => (
+                          <button
+                            key={`modal-assign-${folderModalOffer.id}-${fName}`}
+                            type="button"
+                            onClick={async () => {
+                              const targetId = folderModalOffer.parentOfferId || folderModalOffer.id;
+                              setFolderModalOffer(null);
+                              await moveOfferFamilyToFolder(targetId, fName);
+                            }}
+                            className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-amber-500/10 hover:border-amber-500/30 border border-slate-200/80 dark:border-zinc-800 flex items-center gap-2.5 transition-colors cursor-pointer"
+                          >
+                            <Folder className="w-4 h-4 text-amber-500 shrink-0" />
+                            <span className="truncate">{fName}</span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 dark:border-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetId = folderModalOffer.parentOfferId || folderModalOffer.id;
+                        setFolderModalOffer(null);
+                        moveOfferFamilyToFolder(targetId, '__NEW__');
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 shrink-0" />
+                      <span>Neuen Ordner erstellen...</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
