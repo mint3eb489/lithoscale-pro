@@ -315,14 +315,16 @@ export async function generateKitchenPDF(
             body: kostenTableBody
           },
           layout: 'lightHorizontalLines',
-          margin: [0, 0, 0, 20]
+          margin: [0, 0, 0, 10]
         },
-        { text: 'Gesamtsumme', style: 'sectionHeader', margin: [0, 8, 0, 6] },
-        { text: [
-          'Gesamtbetrag des Kostenvoranschlags: ',
-          { text: `${formatMoney(params.totalVK)}`, bold: true, fontSize: 13, color: '#000000' }
-        ], margin: [0, 0, 0, 4] },
-        { text: '* Alle Preise verstehen sich inkl. 19 % MwSt.', fontSize: 10, color: '#64748b', margin: [0, 0, 0, 4] }
+        {
+          columns: [
+            { text: 'Gesamtsumme', fontSize: 14, bold: true, color: '#2563eb', width: '*' },
+            { text: `${formatMoney(params.totalVK)}`, fontSize: 16, bold: true, color: '#2563eb', alignment: 'right', width: 'auto' }
+          ],
+          margin: [0, 6, 0, 4]
+        },
+        { text: '* Alle Preise verstehen sich inkl. 19 % MwSt.', fontSize: 10, color: '#64748b', margin: [0, 0, 0, 14] }
       );
 
       if (k.optBallerina && pdfBallerinaText) {
