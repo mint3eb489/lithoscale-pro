@@ -176,24 +176,6 @@ export async function generateKitchenPDF(
     }
 
     const beraterObj = findBeraterUser(k.beraterId, params.usersList || []);
-    let beraterBlock: any = { text: '', margin: [0, 0, 0, 0] };
-    if (beraterObj && beraterObj.name) {
-      let line2Parts: string[] = [];
-      if (beraterObj.phone) line2Parts.push(`Tel: ${beraterObj.phone}`);
-      if (beraterObj.email) line2Parts.push(`E-Mail: ${beraterObj.email}`);
-      
-      const line2Text = line2Parts.join(' | ');
-      
-      beraterBlock = {
-        text: [
-          { text: `Ihr Berater: ${beraterObj.name}\n` },
-          { text: line2Text }
-        ],
-        margin: [0, 0, 0, 15] as [number, number, number, number],
-        fontSize: 10,
-        color: '#64748b'
-      };
-    }
 
     const currentDateStr = new Intl.DateTimeFormat('de-DE', {
       day: '2-digit',
@@ -215,82 +197,79 @@ export async function generateKitchenPDF(
         .filter((line) => line.length > 0);
     }
 
-    let customerAndMetaSection: any;
-    if (adresseLines.length > 0) {
-      const recipientStack: any[] = [];
+    // 1. Linke Spalte: Kundenname (und darunter Adresse, falls vorhanden)
+    const leftStack: any[] = [];
+    const customerDisplayName = k.kunde && k.kunde.trim() !== ''
+      ? k.kunde.trim()
+      : (isKostenvoranschlag ? 'Kostenvoranschlag' : 'Ihre neue Traumküche');
 
-      if (k.kunde && k.kunde.trim() !== '') {
-        recipientStack.push({
-          text: k.kunde.trim(),
-          fontSize: 12,
-          bold: true,
-          color: '#1e293b',
-          margin: [0, 0, 0, 2]
-        });
-      }
+    leftStack.push({
+      text: customerDisplayName,
+      fontSize: 12,
+      bold: true,
+      color: '#1e293b',
+      margin: [0, 0, 0, 2]
+    });
 
-      adresseLines.forEach((line) => {
-        recipientStack.push({
-          text: line,
-          fontSize: 10,
-          color: '#334155',
-          margin: [0, 1, 0, 0]
-        });
+    adresseLines.forEach((line) => {
+      leftStack.push({
+        text: line,
+        fontSize: 10,
+        color: '#475569',
+        margin: [0, 1, 0, 0]
+      });
+    });
+
+    // 2. Rechte Spalte: Berater-Informationen immer rechts auf exakt gleicher Zeilenhöhe
+    const rightStack: any[] = [];
+    if (beraterObj && beraterObj.name) {
+      rightStack.push({
+        text: `Ihr Berater: ${beraterObj.name}`,
+        fontSize: 12,
+        bold: true,
+        color: '#1e293b',
+        alignment: 'right',
+        margin: [0, 0, 0, 2]
       });
 
-      const metaStackRight: any[] = [
-        { text: `Datum: ${currentDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right' }
-      ];
-
-      if (beraterObj && beraterObj.name) {
-        metaStackRight.push({
-          text: `Ihr Berater: ${beraterObj.name}`,
+      if (beraterObj.phone) {
+        rightStack.push({
+          text: `Tel: ${beraterObj.phone}`,
           fontSize: 10,
-          bold: true,
-          color: '#334155',
+          color: '#475569',
           alignment: 'right',
-          margin: [0, 4, 0, 0]
+          margin: [0, 1, 0, 0]
         });
-        let line2Parts: string[] = [];
-        if (beraterObj.phone) line2Parts.push(`Tel: ${beraterObj.phone}`);
-        if (beraterObj.email) line2Parts.push(`E-Mail: ${beraterObj.email}`);
-        if (line2Parts.length > 0) {
-          metaStackRight.push({
-            text: line2Parts.join(' | '),
-            fontSize: 9,
-            color: '#64748b',
-            alignment: 'right',
-            margin: [0, 1, 0, 0]
-          });
-        }
       }
 
-      customerAndMetaSection = {
-        columns: [
-          { stack: recipientStack, width: '*' },
-          { stack: metaStackRight, width: 'auto' }
-        ],
-        margin: [0, 0, 0, 18]
-      };
-    } else {
-      customerAndMetaSection = {
-        stack: [
-          {
-            columns: [
-              k.kunde && k.kunde.trim() !== ''
-                ? { text: `Projekt / Kommission: ${k.kunde}`, fontSize: 12, bold: true, color: '#2563eb', width: '*' }
-                : { text: isKostenvoranschlag ? 'Kostenvoranschlag' : 'Ihre neue Traumküche', fontSize: 12, color: '#64748b', width: '*' },
-              { text: `Datum: ${currentDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right', width: 'auto', margin: [0, 2, 0, 0] }
-            ],
-            margin: [0, 0, 0, 15]
-          },
-          beraterBlock
-        ]
-      };
+      if (beraterObj.email) {
+        rightStack.push({
+          text: `E-Mail: ${beraterObj.email}`,
+          fontSize: 10,
+          color: '#475569',
+          alignment: 'right',
+          margin: [0, 1, 0, 0]
+        });
+      }
     }
 
+    const customerAndMetaSection = {
+      columns: [
+        { stack: leftStack, width: '*' },
+        { stack: rightStack, width: 'auto' }
+      ],
+      margin: [0, 0, 0, 18]
+    };
+
     const contentList: any[] = [
-      { columns: headerColumns, margin: [0, 0, 0, 15] },
+      { columns: headerColumns, margin: [0, 0, 0, 8] },
+      {
+        columns: [
+          { text: '', width: '*' },
+          { text: `Datum: ${currentDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right', width: 'auto' }
+        ],
+        margin: [0, 0, 0, 10]
+      },
       customerAndMetaSection,
       k.optKuechenText && pdfKuechenText ? {
         text: parseHTML(pdfKuechenText),
