@@ -11,7 +11,7 @@
         },
         "config": {
           "type": "object",
-          "description": "Calculation factors, margins, and layout texts"
+          "description": "Calculation factors, margins, service fees (Monteur, Anfahrt), and layout texts"
         },
         "updated": {
           "type": "integer",

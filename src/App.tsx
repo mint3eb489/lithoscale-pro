@@ -2259,6 +2259,7 @@ export default function App() {
                   ? userProfile.canUsePriceComparison
                   : (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin')
               }
+              onNavigateAdmin={() => setActiveTab('admin')}
             />
           )}
 

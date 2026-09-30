@@ -69,6 +69,8 @@ export interface AppConfig {
   moebelFactor: number;
   maxRabattMoebel?: number;
   maxRabattMiele?: number;
+  serviceMonteur?: number;
+  serviceAnfahrt?: number;
   stats: {
     dekton: number[];
     natur: number[];
@@ -297,6 +299,8 @@ export const DEFAULTS: { stones: Omit<Stone, "id">[]; config: AppConfig } = {
     moebelFactor: 2.0,
     maxRabattMoebel: 5,
     maxRabattMiele: 3,
+    serviceMonteur: 75,
+    serviceAnfahrt: 89,
     stats: { dekton: [], natur: [], neolith: [] },
     beraterList: [
       { id: 1, name: "Max Müller", email: "max@musterfirma.de", phone: "01234 56789" },

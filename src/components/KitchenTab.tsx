@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Kitchen, AppConfig, KitchenItem, UserProfile, SavedCalculation, KitchenVersionOption } from '../types';
-import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy, Tag, Zap, MapPin } from 'lucide-react';
+import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy, Tag, Zap, MapPin, Wrench, Car, Clock, Sliders, Check } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 import { resolveBeraterId, resolveBeraterName } from '../utils/beraterUtils';
 
@@ -30,6 +30,7 @@ interface KitchenTabProps {
   canUsePriceComparison?: boolean;
   activeDocType?: DocumentType;
   onSwitchDocType?: (docType: DocumentType) => void;
+  onNavigateAdmin?: () => void;
 }
 
 export const KitchenTab: React.FC<KitchenTabProps> = ({
@@ -55,6 +56,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   canUsePriceComparison = true,
   activeDocType,
   onSwitchDocType,
+  onNavigateAdmin,
 }) => {
   const masterFileInputRef = useRef<HTMLInputElement>(null);
   const slot0InputRef = useRef<HTMLInputElement>(null);
@@ -72,6 +74,14 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     1: false,
     2: false,
   });
+
+  // Service-Pauschalen State (Live aus Firebase config: Basis & Service-Gebühren)
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [customHours, setCustomHours] = useState('1');
+  const [lastAddedService, setLastAddedService] = useState<string | null>(null);
+
+  const monteurRate = config.serviceMonteur !== undefined ? Number(config.serviceMonteur) : 75;
+  const anfahrtRate = config.serviceAnfahrt !== undefined ? Number(config.serviceAnfahrt) : 89;
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -347,6 +357,20 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     }
   };
 
+  const clearItem = (type: 'kostenItems', id: number) => {
+    if (activeVersionTab === 0) {
+      setKitchen((prev) => ({
+        ...prev,
+        [type]: (prev[type] || []).map((item) => (item.id === id ? { ...item, name: '', val: '' } : item)),
+      }));
+    } else {
+      updateOptionData(activeVersionTab, (prevK) => ({
+        ...prevK,
+        [type]: (prevK[type] || []).map((item) => (item.id === id ? { ...item, name: '', val: '' } : item)),
+      }));
+    }
+  };
+
   const addItem = (type: 'geraete' | 'miele' | 'spuele' | 'wasser' | 'mehrpreise' | 'kostenItems') => {
     const newItem = { id: Date.now() + Math.random(), name: '', val: '' };
     if (activeVersionTab === 0) {
@@ -360,6 +384,29 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
         [type]: [...(prevK[type] || []), newItem],
       }));
     }
+  };
+
+  const handleAddServicePosition = (name: string, val: string) => {
+    const currentItems = currentKitchen.kostenItems || [];
+    const shouldReplace = currentItems.length === 1 && (!currentItems[0].name || currentItems[0].name.trim() === '') && (!currentItems[0].val || currentItems[0].val.trim() === '');
+    const newItem: KitchenItem = { id: Date.now() + Math.random(), name, val };
+
+    if (activeVersionTab === 0) {
+      setKitchen((prev) => ({
+        ...prev,
+        kostenItems: shouldReplace ? [newItem] : [...(prev.kostenItems || []), newItem],
+      }));
+    } else {
+      updateOptionData(activeVersionTab, (prevK) => ({
+        ...prevK,
+        kostenItems: shouldReplace ? [newItem] : [...(prevK.kostenItems || []), newItem],
+      }));
+    }
+
+    setLastAddedService(`${name} (${val} €)`);
+    setTimeout(() => {
+      setLastAddedService(null);
+    }, 2500);
   };
 
   const appendZubehoer = (text: string) => {
@@ -1077,14 +1124,27 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
               <h2 className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase tracking-widest">
                 Positionen
               </h2>
-              <button
-                type="button"
-                onClick={() => addItem('kostenItems')}
-                className="text-[9px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-500 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Position
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowServiceModal(true)}
+                  className="text-[9px] font-black bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/90 dark:border-zinc-750 px-2.5 py-1.5 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  title="Festgelegte Service-Pauschalen öffnen"
+                >
+                  <Wrench className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                  <span className="hidden sm:inline">Service-Pauschalen</span>
+                  <span className="sm:hidden">Service</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => addItem('kostenItems')}
+                  className="text-[9px] font-black bg-blue-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-blue-500 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Position
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2 mb-4">
@@ -1126,7 +1186,26 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                     </div>
 
                     <div className="flex items-center shrink-0">
-                      {arr.length > 1 ? (
+                      {index === 0 ? (
+                        (() => {
+                          const isRowEmpty = (!item.name || item.name.trim() === '') && (!item.val || item.val.trim() === '');
+                          return (
+                            <button
+                              type="button"
+                              disabled={isRowEmpty}
+                              onClick={() => clearItem('kostenItems', item.id)}
+                              className={`w-7 h-7 flex items-center justify-center rounded-lg transition-all shadow-xs ${
+                                isRowEmpty
+                                  ? 'opacity-30 text-slate-400 dark:text-zinc-600 bg-slate-100 dark:bg-zinc-800/40 cursor-not-allowed'
+                                  : 'bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white hover:scale-105 active:scale-95 cursor-pointer'
+                              }`}
+                              title={isRowEmpty ? 'Position ist bereits leer' : 'Inhalt der 1. Position leeren'}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          );
+                        })()
+                      ) : (
                         <button
                           type="button"
                           onClick={() => removeItem('kostenItems', item.id)}
@@ -1135,8 +1214,6 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      ) : (
-                        <div className="w-7 h-7" />
                       )}
                     </div>
                   </div>
@@ -2204,6 +2281,163 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
           )}
         </div>
       </div>
+
+      {/* SERVICE-PAUSCHALEN POPUP (ÄHNLICH WIE ORANGER ORDNER IM CLOUD ARCHIV) */}
+      {showServiceModal && (
+        <div className="fixed inset-0 z-[500] bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div
+            className="fixed inset-0"
+            onClick={() => setShowServiceModal(false)}
+          />
+          <div className="relative z-10 bg-white dark:bg-[#18181c] w-full max-w-md max-h-[92vh] overflow-y-auto rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-slate-200 dark:border-zinc-750 text-left animate-in fade-in duration-150 space-y-4">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 dark:border-zinc-800 pb-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <Wrench className="w-3 h-3 text-blue-500" />
+                    Service-Pauschalen
+                  </span>
+                </div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                  Dienstleistung auswählen
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowServiceModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-400 hover:text-slate-700 dark:hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                title="Schließen"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Notification when item added */}
+            {lastAddedService && (
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-500" />
+                <span className="truncate">Hinzugefügt: {lastAddedService}</span>
+              </div>
+            )}
+
+            {/* Body Cards */}
+            <div className="space-y-3">
+              {/* MONTEURSTUNDE */}
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/90 dark:border-zinc-800 hover:border-blue-500/40 transition-colors">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span>Monteurstunde</span>
+                      <span className="text-[10px] font-mono font-black text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">
+                        {formatMoney(monteurRate)}/Std.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stundenauswahl Schnell-Pills (nur 2, 3, 4, 8) */}
+                <div className="pt-2 border-t border-slate-200/70 dark:border-zinc-800/80">
+                  <div className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1.5">
+                    Stundenauswahl:
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[2, 3, 4, 8].map((h) => {
+                      const sum = h * monteurRate;
+                      return (
+                        <button
+                          key={`monteur-hrs-${h}`}
+                          type="button"
+                          onClick={() => {
+                            handleAddServicePosition(
+                              `Monteurstunde (${h} Std.)`,
+                              sum.toFixed(2).replace('.', ',')
+                            );
+                          }}
+                          className="px-1.5 py-1.5 rounded-lg bg-white dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700/80 hover:bg-blue-50 hover:border-blue-300 dark:hover:bg-blue-500/20 text-center transition-all cursor-pointer active:scale-95"
+                        >
+                          <div className="text-[10px] font-extrabold text-slate-750 dark:text-slate-200 truncate">
+                            {h} {h === 8 ? 'Std. (Tag)' : 'Std.'}
+                          </div>
+                          <div className="text-[9px] font-mono text-blue-600 dark:text-blue-400 font-bold">
+                            {formatMoney(sum)}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Freie Stundeneingabe */}
+                  <div className="flex items-center gap-2 mt-2.5">
+                    <div className="relative w-20 sm:w-24 shrink-0">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0.5"
+                        value={customHours}
+                        onChange={(e) => setCustomHours(e.target.value)}
+                        className="input-field input-field-compact text-xs font-mono text-center pr-7 h-9 w-full"
+                        placeholder="1"
+                      />
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-slate-400 font-bold">
+                        Std.
+                      </span>
+                    </div>
+
+                    <div className="text-xs font-mono font-bold text-blue-600 dark:text-blue-400 flex-1 text-right truncate pr-1">
+                      {formatMoney((parseFloat(customHours.replace(',', '.')) || 1) * monteurRate)}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const h = parseFloat(customHours.replace(',', '.')) || 1;
+                        const total = h * monteurRate;
+                        handleAddServicePosition(
+                          h === 1 ? 'Monteurstunde' : `Monteurstunde (${h} Std.)`,
+                          total.toFixed(2).replace('.', ',')
+                        );
+                      }}
+                      className="h-9 w-28 sm:w-32 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs shrink-0 select-none"
+                    >
+                      Hinzufügen
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* AN- & ABFAHRT */}
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-slate-50 dark:bg-zinc-900/60 border border-slate-200/90 dark:border-zinc-800 hover:border-amber-500/40 transition-colors">
+                <div className="flex items-center justify-between gap-2.5">
+                  <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <Car className="w-4 h-4" />
+                    </div>
+                    <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <span>An- & Abfahrt</span>
+                      <span className="text-[10px] font-mono font-black text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                        {formatMoney(anfahrtRate)}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleAddServicePosition('An- & Abfahrt', anfahrtRate.toFixed(2).replace('.', ','));
+                    }}
+                    className="h-9 w-28 sm:w-32 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-white flex items-center justify-center transition-all cursor-pointer active:scale-95 shadow-xs shrink-0 select-none"
+                  >
+                    Hinzufügen
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Berater, UserProfile, getBlancoChoiceArticleList, getStoneMaterial, StoneMaterialType, DEFAULTS } from '../types';
 import { resolveStoneImageUrl } from '../utils/imageUtils';
-import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown, Percent, Tag, PlusCircle, Check, ListPlus } from 'lucide-react';
+import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown, Percent, Tag, PlusCircle, Check, ListPlus, Clock, Car } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 interface AdminTabProps {
@@ -181,10 +181,10 @@ const ConfigInput: React.FC<ConfigInputProps> = ({
           onKeyDown={handleKeyDown}
           className={`input-field input-field-compact text-xs font-mono w-full ${
             icon ? '!pl-8' : '!pl-2.5'
-          } ${suffix ? '!pr-12' : '!pr-2.5'} bg-slate-50/50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-lg focus:border-blue-500 focus:bg-white dark:focus:bg-black transition-all text-slate-800 dark:text-slate-100`}
+          } ${suffix ? (suffix.length > 3 ? '!pr-16' : '!pr-12') : '!pr-2.5'} bg-slate-50/50 dark:bg-zinc-900/40 border border-slate-200 dark:border-zinc-800 rounded-lg focus:border-blue-500 focus:bg-white dark:focus:bg-black transition-all text-slate-800 dark:text-slate-100`}
         />
         {suffix && (
-          <span className="absolute right-2 text-[8px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-zinc-800 px-1 py-0.5 rounded border border-slate-200/50 dark:border-zinc-700/50 select-none pointer-events-none">
+          <span className="absolute right-2 text-[8px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-slate-200/50 dark:border-zinc-700/50 select-none pointer-events-none">
             {suffix}
           </span>
         )}
@@ -547,7 +547,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                   <Sparkles className="w-3.5 h-3.5 text-blue-500" />
                   <span>Basis & Service-Gebühren</span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <ConfigInput
                     configKey="factor"
                     value={config.factor}
@@ -594,6 +594,22 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                     label="Montage Pauschale"
                     suffix="EUR"
                     icon={<FileSpreadsheet className="w-3.5 h-3.5" />}
+                    onUpdate={onUpdateConfig}
+                  />
+                  <ConfigInput
+                    configKey="serviceMonteur"
+                    value={config.serviceMonteur ?? 75}
+                    label="Monteurstunde (KV)"
+                    suffix="EUR/h"
+                    icon={<Clock className="w-3.5 h-3.5" />}
+                    onUpdate={onUpdateConfig}
+                  />
+                  <ConfigInput
+                    configKey="serviceAnfahrt"
+                    value={config.serviceAnfahrt ?? 89}
+                    label="An- & Abfahrt (KV)"
+                    suffix="EUR"
+                    icon={<Car className="w-3.5 h-3.5" />}
                     onUpdate={onUpdateConfig}
                   />
                 </div>
