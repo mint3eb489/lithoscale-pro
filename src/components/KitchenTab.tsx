@@ -988,7 +988,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
 
               <div className="border-t border-slate-200 dark:border-darkBorder pt-3.5">
                 <div className="flex justify-between items-center mb-1.5 flex-wrap gap-2">
-                  <label className="text-[9px] font-black text-slate-650 dark:text-slate-300 uppercase">Arbeitsplatte (Bezeichnung & Preis)</label>
+                  <label className="text-[9px] font-black text-slate-650 dark:text-slate-300 uppercase">Arbeitsplatte</label>
                   <div className="flex gap-1 items-center relative" ref={dropdownRef}>
                     <button
                       type="button"
@@ -1313,12 +1313,12 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
 
             {/* SINK & APPLIANCES SCROLLABLE FORMS WITH DYNAMIC SORT, REPLICATE & SPEED ACTIONS */}
             {[
-              { label: 'Allgemeine Elektrogeräte (Im Möbel-Preis enthalten)', type: 'geraete', phName: 'Hersteller & Modell...', phVal: 'Optional' },
-              { label: 'Miele Geräte (Bezeichnung & VK Brutto)', type: 'miele', phName: 'Bezeichnung (z.B. Miele Backofen)...', phVal: 'VK Brutto', mieleRabatt: true },
-              { label: 'Spüle (Im Möbel-Preis enthalten)', type: 'spuele', phName: 'Bezeichnung (z.B. Blanco Etagon)...', phVal: 'Optional' },
-              { label: 'Wasseraufbereitung (Bezeichnung & VK Brutto)', type: 'wasser', phName: 'Bezeichnung (z.B. Quooker PRO3)...', phVal: 'VK Brutto' },
+              { label: 'Allgemeine Elektrogeräte', type: 'geraete', phName: 'Hersteller & Modell...', phVal: 'Optional' },
+              { label: 'Miele Geräte', type: 'miele', phName: 'Bezeichnung (z.B. Miele Backofen)...', phVal: 'VK Brutto', mieleRabatt: true },
+              { label: 'Spüle', type: 'spuele', phName: 'Bezeichnung (z.B. Blanco Etagon)...', phVal: 'Optional' },
+              { label: 'Wasseraufbereitung', type: 'wasser', phName: 'Bezeichnung (z.B. Quooker PRO3)...', phVal: 'VK Brutto' },
             ].map((block) => (
-              <div key={block.label} className="mb-4 border-t border-slate-200 dark:border-darkBorder pt-4">
+              <div key={block.type} className="mb-4 border-t border-slate-200 dark:border-darkBorder pt-4">
                 <div className="flex justify-between items-center mb-2.5">
                   <label className="text-[9px] font-black text-slate-655 dark:text-slate-300 uppercase">{block.label}</label>
                   <div className="flex items-center gap-2">
@@ -1408,7 +1408,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
             ))}
 
             <div className="mt-4 border-t border-slate-200 dark:border-darkBorder pt-4">
-              <label className="text-[9px] font-black text-slate-655 dark:text-slate-300 uppercase block mb-1.5 font-bold select-none">Optionaler Hauspreis / Zielpreis (Überschreibt den Gesamt-VK)</label>
+              <label className="text-[9px] font-black text-slate-655 dark:text-slate-300 uppercase block mb-1.5 font-bold select-none">Optionaler Hauspreis / Zielpreis</label>
               <div className="relative">
                 <input
                   type="text"

@@ -1771,6 +1771,9 @@ export default function App() {
     const parsedKitchenData: Kitchen = {
       offerId: kitchen.offerId,
       kunde: kitchen.kunde,
+      kundeAdresse: kitchen.kundeAdresse,
+      kundeStrasse: kitchen.kundeStrasse,
+      kundePlzOrt: kitchen.kundePlzOrt,
       beraterId: kitchen.beraterId,
       front1: kitchen.front1,
       front2: kitchen.front2,
@@ -1784,16 +1787,17 @@ export default function App() {
       miele: newMiele.length > 0 ? newMiele : [{ id: Date.now() + 1, name: '', val: '' }],
       spuele: newSpuele.length > 0 ? newSpuele : [{ id: Date.now() + 3, name: '', val: '' }],
       wasser: newWasser.length > 0 ? newWasser : [{ id: Date.now() + 2, name: '', val: '' }],
-      mehrpreise: [{ id: Date.now() + 4, name: '', val: '' }],
+      mehrpreise: (kitchen.mehrpreise && kitchen.mehrpreise.length > 0) ? kitchen.mehrpreise : [{ id: Date.now() + 4, name: '', val: '' }],
       steinVK: apPriceVK,
       steinEK: apPriceEK,
-      zubehoer: '',
+      zubehoer: kitchen.zubehoer || '',
       showMoebelEK: kitchen.showMoebelEK ?? true,
       optKuechenText: kitchen.optKuechenText ?? true,
       optBallerina: kitchen.optBallerina ?? true,
       optAnschluss: kitchen.optAnschluss ?? true,
       optAnschlussRabatt: kitchen.optAnschlussRabatt ?? false,
       optNachtext: kitchen.optNachtext ?? true,
+      kostenItems: kitchen.kostenItems,
     };
 
     return {
@@ -1852,10 +1856,22 @@ export default function App() {
             newKitchen = {
               ...newKitchen,
               ...res.parsedKitchenData,
+              mehrpreise: (newKitchen.mehrpreise && newKitchen.mehrpreise.length > 0)
+                ? newKitchen.mehrpreise
+                : res.parsedKitchenData.mehrpreise,
+              zubehoer: newKitchen.zubehoer !== undefined ? newKitchen.zubehoer : res.parsedKitchenData.zubehoer,
+              kostenItems: newKitchen.kostenItems || res.parsedKitchenData.kostenItems,
             };
           } else {
             const slotIdx = idx;
             const optId = 'opt_ver_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+            const optKitchenData = {
+              ...res.parsedKitchenData,
+              mehrpreise: (newKitchen.mehrpreise && newKitchen.mehrpreise.length > 0)
+                ? newKitchen.mehrpreise
+                : res.parsedKitchenData.mehrpreise,
+              zubehoer: newKitchen.zubehoer || res.parsedKitchenData.zubehoer || '',
+            };
             const newOption: KitchenVersionOption = {
               id: optId,
               slotIndex: slotIdx,
@@ -1870,7 +1886,7 @@ export default function App() {
               totalCalculatedVK: res.totalCalculatedVK,
               finalDisplayVK: res.parsedKitchenData.hauspreis ? parseFloat(res.parsedKitchenData.hauspreis.replace(',', '.')) : res.totalCalculatedVK,
               timestamp: Date.now(),
-              kitchenData: res.parsedKitchenData,
+              kitchenData: optKitchenData,
             };
             newVersionOptions = newVersionOptions.filter(o => o.slotIndex !== slotIdx);
             newVersionOptions.push(newOption);
@@ -1893,33 +1909,58 @@ export default function App() {
 
         const slotIdx = targetSlotIndex !== undefined ? targetSlotIndex : 0;
         if (slotIdx === 0) {
-          setKitchen((prev) => ({
-            ...prev,
-            ...res.parsedKitchenData,
-            versionOptions: [],
-          }));
+          setKitchen((prev) => {
+            const preservedMehrpreise = (prev.mehrpreise && prev.mehrpreise.length > 0)
+              ? prev.mehrpreise
+              : res.parsedKitchenData.mehrpreise;
+            const preservedZubehoer = prev.zubehoer !== undefined ? prev.zubehoer : res.parsedKitchenData.zubehoer;
+            const preservedKostenItems = prev.kostenItems || res.parsedKitchenData.kostenItems;
+
+            return {
+              ...prev,
+              ...res.parsedKitchenData,
+              mehrpreise: preservedMehrpreise,
+              zubehoer: preservedZubehoer,
+              kostenItems: preservedKostenItems,
+              versionOptions: [],
+            };
+          });
           showToast(`"${file.name}" als Basis-Angebot eingelesen!`);
         } else {
           const optId = 'opt_ver_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
-          const newOption: KitchenVersionOption = {
-            id: optId,
-            slotIndex: slotIdx,
-            fileName: res.fileName,
-            apName: res.parsedKitchenData.apName || '',
-            ekMoebel: res.ekMoebel,
-            steinVK: res.steinVK,
-            steinEK: res.steinEK,
-            hauspreis: res.parsedKitchenData.hauspreis || '',
-            mieleVK: res.mieleVK,
-            wasserVK: res.wasserVK,
-            totalCalculatedVK: res.totalCalculatedVK,
-            finalDisplayVK: res.parsedKitchenData.hauspreis ? parseFloat(res.parsedKitchenData.hauspreis.replace(',', '.')) : res.totalCalculatedVK,
-            timestamp: Date.now(),
-            kitchenData: res.parsedKitchenData,
-          };
-
           setKitchen((prev) => {
             const existingOpts = (prev.versionOptions || []).filter(o => o.slotIndex !== slotIdx);
+            const currentOpt = (prev.versionOptions || []).find(o => o.slotIndex === slotIdx);
+
+            const optKitchenData = {
+              ...res.parsedKitchenData,
+              mehrpreise: (currentOpt?.kitchenData?.mehrpreise && currentOpt.kitchenData.mehrpreise.length > 0)
+                ? currentOpt.kitchenData.mehrpreise
+                : (prev.mehrpreise && prev.mehrpreise.length > 0)
+                  ? prev.mehrpreise
+                  : res.parsedKitchenData.mehrpreise,
+              zubehoer: currentOpt?.kitchenData?.zubehoer !== undefined
+                ? currentOpt.kitchenData.zubehoer
+                : (prev.zubehoer !== undefined ? prev.zubehoer : res.parsedKitchenData.zubehoer),
+            };
+
+            const newOption: KitchenVersionOption = {
+              id: optId,
+              slotIndex: slotIdx,
+              fileName: res.fileName,
+              apName: res.parsedKitchenData.apName || '',
+              ekMoebel: res.ekMoebel,
+              steinVK: res.steinVK,
+              steinEK: res.steinEK,
+              hauspreis: res.parsedKitchenData.hauspreis || '',
+              mieleVK: res.mieleVK,
+              wasserVK: res.wasserVK,
+              totalCalculatedVK: res.totalCalculatedVK,
+              finalDisplayVK: res.parsedKitchenData.hauspreis ? parseFloat(res.parsedKitchenData.hauspreis.replace(',', '.')) : res.totalCalculatedVK,
+              timestamp: Date.now(),
+              kitchenData: optKitchenData,
+            };
+
             return {
               ...prev,
               versionOptions: [...existingOpts, newOption],
