@@ -928,7 +928,7 @@ export const CalculatorTab: React.FC<CalculatorTabProps> = ({
       </div>
 
       {/* SUMMARY SIDEBAR - DESKTOP */}
-      <div className="hidden lg:block lg:col-span-2 lg:sticky lg:top-10 text-slate-900">
+      <div className="hidden lg:block lg:col-span-2 text-slate-900">
         <div className="p-6 md:p-8 bg-black text-white rounded-3xl shadow-2xl border border-darkBorder transition-all duration-300 relative overflow-hidden group/card">
           
           {/* Der Glow-Hintergrundkreis */}

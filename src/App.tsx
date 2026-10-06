@@ -2136,7 +2136,7 @@ export default function App() {
     .filter((f): f is string => typeof f === 'string' && f.trim().length > 0 && f !== '__NEW__');
 
   return (
-    <div className="px-3 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans w-full max-w-full overflow-x-hidden">
+    <div className="px-3 pb-3 pt-[calc(env(safe-area-inset-top,0px)+0.75rem)] md:p-8 bg-slate-50 dark:bg-black text-slate-900 dark:text-slate-100 min-h-screen font-sans w-full max-w-full overflow-x-clip lg:overflow-x-visible">
       
       {/* iOS Dynamic Island & Statusleiste Schutz / dezenter Blur-Übergang beim Hochscrollen */}
       <div 

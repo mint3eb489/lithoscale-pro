@@ -409,9 +409,9 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     }, 2500);
   };
 
-  const appendZubehoer = (text: string) => {
-    const current = currentKitchen.zubehoer ? String(currentKitchen.zubehoer) : '';
-    if (current.includes(text)) return;
+  const appendZubehoer = (text: string, allowMultiple = false) => {
+    const current = currentKitchen.zubehoer ? String(currentKitchen.zubehoer).trim() : '';
+    if (!allowMultiple && current.includes(text)) return;
     const updated = current ? `${current}\n${text}` : text;
     updateField('zubehoer', updated);
   };
@@ -1495,19 +1495,23 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
               <label className="text-[9px] font-black text-slate-650 dark:text-slate-300 uppercase block mb-1.5 font-bold">Ebenso enthalten sind (Zubehör):</label>
               <div className="flex flex-wrap gap-1 mb-2">
                 {[
-                  'Besteckeinsatz',
-                  'Mülltrennsystem',
-                  'LED-Beleuchtung',
-                  'Glaszargen in sämtlichen hohen Auszügen',
-                  'Anti-Rutschmatten in sämtlichen Schubkästen/Auszügen',
-                ].map((txt) => (
+                  { text: 'Besteckeinsatz', label: 'Besteckeinsatz', allowMultiple: true },
+                  { text: 'Mülltrennsystem', label: 'Mülltrennsystem' },
+                  { text: 'LED-Beleuchtung', label: 'LED-Beleuchtung', allowMultiple: true },
+                  { text: 'Glaszargen in sämtlichen hohen Auszügen', label: 'Glaszargen' },
+                  { text: 'Anti-Rutschmatten in sämtlichen Schubkästen/Auszügen', label: 'Anti-Rutschmatten' },
+                  { text: 'Nischenverkleidungen', label: 'Nischenverkleidungen' },
+                  { text: 'Durchgangstür', label: 'Durchgangstür' },
+                  { text: 'Deckenblende', label: 'Deckenblende' },
+                  { text: 'Steckbord', label: 'Steckbord' },
+                ].map((item) => (
                   <button
-                    key={txt}
+                    key={item.text}
                     type="button"
-                    onClick={() => appendZubehoer(txt)}
+                    onClick={() => appendZubehoer(item.text, item.allowMultiple)}
                     className="bg-blue-50/70 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300 border border-blue-200 dark:border-blue-500/20 px-2 py-1 rounded-lg text-[8px] font-extrabold hover:bg-blue-100 hover:scale-105 transition-all active:scale-95 cursor-pointer shadow-sm"
                   >
-                    + {txt.split(' ')[0]}
+                    + {item.label}
                   </button>
                 ))}
               </div>
@@ -1571,7 +1575,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
       </div>
 
       {/* FIXED OFFERS SIDEBAR COMPONENT (DESKTOP) */}
-      <div className="hidden lg:block lg:col-span-2 lg:sticky lg:top-10 space-y-4">
+      <div className="hidden lg:block lg:col-span-2 lg:sticky lg:top-6 lg:self-start space-y-4 z-20 max-h-[calc(100vh-2.5rem)] overflow-y-auto no-scrollbar">
         <div className="p-4 md:p-5 bg-black text-white rounded-2xl shadow-2xl border border-slate-900 transition-all duration-300 relative overflow-hidden group/card">
           
           {/* Der Glow-Hintergrundkreis */}
