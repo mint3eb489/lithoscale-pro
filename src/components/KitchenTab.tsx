@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Kitchen, AppConfig, KitchenItem, UserProfile, SavedCalculation, KitchenVersionOption } from '../types';
-import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy, Tag, Zap, MapPin, Wrench, Car, Clock, Sliders, Check } from 'lucide-react';
+import { Download, Trash2, Sparkles, UploadCloud, FileText, Maximize2, X, Eye, EyeOff, Bookmark, Cloud, Layers, RefreshCw, CheckCircle2, ArrowUpRight, ArrowDownRight, Equal, FileSpreadsheet, Plus, ChevronDown, ChevronUp, Copy, Tag, Zap, MapPin, Wrench, Car, Clock, Sliders, Check, Calendar, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 import { resolveBeraterId, resolveBeraterName } from '../utils/beraterUtils';
 
@@ -28,6 +28,7 @@ interface KitchenTabProps {
   onLoadSavedCalculation?: (calc: SavedCalculation) => void;
   onDeleteSavedCalculation?: (id: string, name: string) => void;
   canUsePriceComparison?: boolean;
+  canUseSanitas?: boolean;
   activeDocType?: DocumentType;
   onSwitchDocType?: (docType: DocumentType) => void;
   onNavigateAdmin?: () => void;
@@ -54,6 +55,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   onLoadSavedCalculation,
   onDeleteSavedCalculation,
   canUsePriceComparison = true,
+  canUseSanitas = true,
   activeDocType,
   onSwitchDocType,
   onNavigateAdmin,
@@ -65,6 +67,10 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
   const mobileSlot0InputRef = useRef<HTMLInputElement>(null);
   const mobileSlot1InputRef = useRef<HTMLInputElement>(null);
   const mobileSlot2InputRef = useRef<HTMLInputElement>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string>('');
+  const [calendarYear, setCalendarYear] = useState<number>(() => new Date().getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   const [isInputFocused, setIsInputFocused] = useState(false);
   const [showSavedCalcsDropdown, setShowSavedCalcsDropdown] = useState(false);
@@ -145,6 +151,17 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     };
   }, [showSavedCalcsDropdown]);
 
+  useEffect(() => {
+    if (!showDatePicker) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDatePicker(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDatePicker]);
+
   const renderSafeHTML = (htmlStr: string) => {
     if (!htmlStr) return null;
     return <span dangerouslySetInnerHTML={{ __html: htmlStr }} />;
@@ -158,6 +175,133 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
     return parseFloat(String(str).replace(',', '.')) || 0;
   };
 
+  const formatGermanDate = (val?: string) => {
+    if (!val) return '';
+    const parts = val.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    }
+    return val;
+  };
+
+  const GERMAN_MONTH_NAMES = [
+    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+  ];
+
+  const GERMAN_WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+
+  const handleOpenDatePicker = () => {
+    const currentDate = currentKitchen.offerDate || kitchen.offerDate || '';
+    setSelectedCalendarDate(currentDate);
+    if (currentDate && /^\d{4}-\d{2}-\d{2}$/.test(currentDate)) {
+      const [yStr, mStr] = currentDate.split('-');
+      const y = parseInt(yStr, 10);
+      const m = parseInt(mStr, 10) - 1;
+      setCalendarYear(y);
+      setCalendarMonth(m);
+    } else {
+      const today = new Date();
+      setCalendarYear(today.getFullYear());
+      setCalendarMonth(today.getMonth());
+    }
+    setShowDatePicker(true);
+  };
+
+  const prevCalendarMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11);
+      setCalendarYear((y) => y - 1);
+    } else {
+      setCalendarMonth((m) => m - 1);
+    }
+  };
+
+  const nextCalendarMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0);
+      setCalendarYear((y) => y + 1);
+    } else {
+      setCalendarMonth((m) => m + 1);
+    }
+  };
+
+  const selectCalendarDate = (year: number, month: number, day: number) => {
+    const formatted = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    setSelectedCalendarDate(formatted);
+    updateField('offerDate', formatted);
+  };
+
+  const selectCalendarToday = () => {
+    const today = new Date();
+    const formatted = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    setSelectedCalendarDate(formatted);
+    setCalendarYear(today.getFullYear());
+    setCalendarMonth(today.getMonth());
+    updateField('offerDate', formatted);
+  };
+
+  const handleApplyDatePicker = () => {
+    const targetDate = selectedCalendarDate || currentKitchen.offerDate || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+    updateField('offerDate', targetDate);
+    setShowDatePicker(false);
+  };
+
+  const renderDatePickerButton = (isMobile = false) => {
+    if (!canUseSanitas) return null;
+    const hasCustomDate = Boolean(currentKitchen.offerDate && currentKitchen.offerDate.trim() !== '');
+
+    if (!hasCustomDate) {
+      return (
+        <button
+          type="button"
+          onClick={handleOpenDatePicker}
+          className={`flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-zinc-900/90 hover:border-blue-500/60 hover:bg-zinc-850 text-slate-300 hover:text-white transition-all font-bold select-none cursor-pointer shadow-xs active:scale-95 ${
+            isMobile ? 'px-2.5 py-1 text-[11px]' : 'px-2 py-1 text-[10px]'
+          }`}
+          title="Druckdatum für Angebot festlegen (Standard: Tagaktuell)"
+        >
+          <Calendar className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-blue-400 shrink-0`} />
+          <span>Datum</span>
+        </button>
+      );
+    }
+
+    return (
+      <div
+        className={`inline-flex items-center gap-1 rounded-lg border border-blue-500/50 bg-blue-500/15 text-blue-400 font-bold shadow-xs ${
+          isMobile ? 'px-2 py-0.5 text-[11px]' : 'px-2 py-0.5 text-[10px]'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={handleOpenDatePicker}
+          className="flex items-center gap-1.5 cursor-pointer py-0.5 hover:text-blue-300 transition-colors select-none"
+          title="Klicken, um Druckdatum zu ändern"
+        >
+          <Calendar className={`${isMobile ? 'w-4 h-4' : 'w-3.5 h-3.5'} text-blue-400 shrink-0`} />
+          <span className="font-mono text-blue-300 font-bold">
+            {formatGermanDate(currentKitchen.offerDate)}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelectedCalendarDate('');
+            updateField('offerDate', '');
+          }}
+          className={`rounded hover:bg-blue-500/30 text-blue-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer ml-0.5 ${
+            isMobile ? 'w-5 h-5' : 'w-4 h-4'
+          }`}
+          title="Auf tagaktuelles Datum zurücksetzen"
+        >
+          <X className={`${isMobile ? 'w-3.5 h-3.5' : 'w-3 h-3'}`} />
+        </button>
+      </div>
+    );
+  };
+
   const moebelFactor = personalFactors?.moebelFactor ?? config.moebelFactor ?? 2.0;
 
   // Active Kitchen object being viewed and edited in the UI
@@ -169,6 +313,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
         kundeStrasse: opt1.kitchenData.kundeStrasse ?? kitchen.kundeStrasse,
         kundePlzOrt: opt1.kitchenData.kundePlzOrt ?? kitchen.kundePlzOrt,
         beraterId: opt1.kitchenData.beraterId || kitchen.beraterId,
+        offerDate: opt1.kitchenData.offerDate || kitchen.offerDate,
       }
     : activeVersionTab === 2 && opt2?.kitchenData
     ? {
@@ -178,6 +323,7 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
         kundeStrasse: opt2.kitchenData.kundeStrasse ?? kitchen.kundeStrasse,
         kundePlzOrt: opt2.kitchenData.kundePlzOrt ?? kitchen.kundePlzOrt,
         beraterId: opt2.kitchenData.beraterId || kitchen.beraterId,
+        offerDate: opt2.kitchenData.offerDate || kitchen.offerDate,
       }
     : kitchen;
 
@@ -316,9 +462,16 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
       }
     }
 
-    // Rabatte immer auf dem Hauptauftrag / global synchron halten
-    if (field === 'rabattMoebel' || field === 'rabattMiele') {
-      setKitchen((prev) => ({ ...prev, [field]: val }));
+    // Rabatte und Angebotsdatum immer auf dem Hauptauftrag / global synchron halten
+    if (field === 'rabattMoebel' || field === 'rabattMiele' || field === 'offerDate') {
+      setKitchen((prev) => ({
+        ...prev,
+        [field]: val,
+        versionOptions: (prev.versionOptions || []).map((opt) => ({
+          ...opt,
+          kitchenData: opt.kitchenData ? { ...opt.kitchenData, [field]: val } : undefined,
+        })),
+      }));
       return;
     }
 
@@ -1638,6 +1791,13 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
                   </h2>
                 )}
               </div>
+
+              {/* Kalender-Button auf einer Höhe mit "Angebot", rechtsbündig über dem Endpreis (Sanitas Feature) */}
+              {canUseSanitas && (
+                <div className="flex items-center shrink-0">
+                  {renderDatePickerButton(false)}
+                </div>
+              )}
             </div>
 
             <div className="p-4 bg-white/5 rounded-xl border border-blue-600/30 text-center shadow-inner relative overflow-hidden mb-4 mt-2">
@@ -2098,6 +2258,17 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
             </div>
           )}
 
+          {/* Druckdatum / Kalender-Button auf Mobile (Sanitas Feature) */}
+          {canUseSanitas && (
+            <div className="flex items-center justify-between px-1 bg-zinc-950/60 p-2 rounded-xl border border-slate-800/80">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-blue-400" />
+                Druckdatum
+              </span>
+              {renderDatePickerButton(true)}
+            </div>
+          )}
+
           {/* Preisbox Gesamt-VK */}
           <div className="p-4 bg-white/5 rounded-xl border border-blue-600/30 text-center shadow-inner relative overflow-hidden">
             <div className="absolute inset-0 bg-blue-500/5" />
@@ -2442,6 +2613,257 @@ export const KitchenTab: React.FC<KitchenTabProps> = ({
           </div>
         </div>
       )}
+
+      {/* SANITAS IN-APP KALENDER MODAL */}
+      {showDatePicker && canUseSanitas && (() => {
+        const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+        const firstDayIndex = new Date(calendarYear, calendarMonth, 1).getDay();
+        const startingDayOffset = (firstDayIndex + 6) % 7;
+        const prevMonthDays = new Date(calendarYear, calendarMonth, 0).getDate();
+
+        const todayObj = new Date();
+        const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+        const effectiveSelectedDate = selectedCalendarDate || currentKitchen.offerDate || '';
+
+        const currentYearNum = todayObj.getFullYear();
+        const yearOptions = Array.from({ length: 16 }, (_, i) => currentYearNum - 10 + i);
+
+        return (
+          <div
+            className="fixed inset-0 z-[700] bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 select-none animate-in fade-in duration-150"
+            onClick={() => setShowDatePicker(false)}
+          >
+            <div
+              className="bg-[#121216] border border-slate-800 rounded-3xl p-5 shadow-2xl max-w-sm w-full relative text-slate-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header: Title + Active Date Badge + Close Button */}
+              <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-800/80">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-white">
+                      Angebotsdatum festlegen
+                    </h3>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[11px] text-slate-400">Ausgewählt:</span>
+                      <span className="text-[11px] font-mono font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                        {effectiveSelectedDate ? formatGermanDate(effectiveSelectedDate) : `Heute (${formatGermanDate(todayStr)})`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDatePicker(false)}
+                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer"
+                  title="Schließen"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Month & Year Navigation */}
+              <div className="flex items-center justify-between mb-3 px-1">
+                <button
+                  type="button"
+                  onClick={prevCalendarMonth}
+                  className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                  title="Vorheriger Monat"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={calendarMonth}
+                    onChange={(e) => setCalendarMonth(parseInt(e.target.value, 10))}
+                    className="bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-bold text-white px-2.5 py-1.5 rounded-xl outline-none cursor-pointer"
+                  >
+                    {GERMAN_MONTH_NAMES.map((name, idx) => (
+                      <option key={name} value={idx}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={calendarYear}
+                    onChange={(e) => setCalendarYear(parseInt(e.target.value, 10))}
+                    className="bg-slate-900 border border-slate-800 hover:border-slate-700 text-xs font-bold font-mono text-white px-2.5 py-1.5 rounded-xl outline-none cursor-pointer"
+                  >
+                    {yearOptions.map((yr) => (
+                      <option key={yr} value={yr}>
+                        {yr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={nextCalendarMonth}
+                  className="w-8 h-8 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-90"
+                  title="Nächster Monat"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Weekday Headers */}
+              <div className="grid grid-cols-7 gap-1 text-center mb-1 text-[10px] font-black uppercase text-slate-400">
+                {GERMAN_WEEKDAYS.map((wd) => (
+                  <div key={wd} className="py-0.5">
+                    {wd}
+                  </div>
+                ))}
+              </div>
+
+              {/* Day Cells Grid */}
+              <div className="grid grid-cols-7 gap-1 mb-3.5">
+                {/* Previous Month trailing days */}
+                {Array.from({ length: startingDayOffset }, (_, i) => {
+                  const dayNum = prevMonthDays - startingDayOffset + 1 + i;
+                  const prevMonthIdx = calendarMonth === 0 ? 11 : calendarMonth - 1;
+                  const prevYear = calendarMonth === 0 ? calendarYear - 1 : calendarYear;
+                  const cellDateStr = `${prevYear}-${String(prevMonthIdx + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const isSelected = effectiveSelectedDate === cellDateStr;
+                  const isToday = cellDateStr === todayStr;
+
+                  return (
+                    <button
+                      key={`prev-day-${dayNum}`}
+                      type="button"
+                      onClick={() => {
+                        selectCalendarDate(prevYear, prevMonthIdx, dayNum);
+                        setCalendarYear(prevYear);
+                        setCalendarMonth(prevMonthIdx);
+                      }}
+                      onDoubleClick={() => {
+                        selectCalendarDate(prevYear, prevMonthIdx, dayNum);
+                        setShowDatePicker(false);
+                      }}
+                      className={`h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center relative cursor-pointer active:scale-95 ${
+                        isSelected
+                          ? 'bg-blue-600 text-white font-black shadow-lg shadow-blue-500/50 ring-2 ring-blue-400 scale-105 z-10'
+                          : isToday
+                          ? 'bg-blue-500/15 border border-blue-500/40 text-blue-400'
+                          : 'text-slate-600 hover:text-slate-300 hover:bg-slate-900/60'
+                      }`}
+                    >
+                      {dayNum}
+                      {isToday && !isSelected && (
+                        <span className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-400" />
+                      )}
+                    </button>
+                  );
+                })}
+
+                {/* Current Month days */}
+                {Array.from({ length: daysInMonth }, (_, i) => {
+                  const dayNum = i + 1;
+                  const cellDateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                  const isSelected = effectiveSelectedDate === cellDateStr;
+                  const isToday = cellDateStr === todayStr;
+
+                  return (
+                    <button
+                      key={`curr-day-${dayNum}`}
+                      type="button"
+                      onClick={() => selectCalendarDate(calendarYear, calendarMonth, dayNum)}
+                      onDoubleClick={() => {
+                        selectCalendarDate(calendarYear, calendarMonth, dayNum);
+                        setShowDatePicker(false);
+                      }}
+                      className={`h-8 rounded-lg text-xs font-bold transition-all flex items-center justify-center relative cursor-pointer active:scale-95 ${
+                        isSelected
+                          ? 'bg-blue-600 text-white font-black shadow-lg shadow-blue-500/50 ring-2 ring-blue-400 scale-105 z-10'
+                          : isToday
+                          ? 'bg-blue-500/15 border border-blue-500/50 text-blue-400 hover:bg-blue-500/25'
+                          : 'text-slate-200 hover:bg-slate-800 hover:text-white'
+                      }`}
+                    >
+                      {dayNum}
+                      {isToday && !isSelected && (
+                        <span className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-400" />
+                      )}
+                    </button>
+                  );
+                })}
+
+                {/* Next Month leading days to fill grid */}
+                {(() => {
+                  const totalCells = startingDayOffset + daysInMonth;
+                  const remainder = totalCells % 7;
+                  const daysToAdd = remainder === 0 ? 0 : 7 - remainder;
+                  const nextMonthIdx = calendarMonth === 11 ? 0 : calendarMonth + 1;
+                  const nextYear = calendarMonth === 11 ? calendarYear + 1 : calendarYear;
+
+                  return Array.from({ length: daysToAdd }, (_, i) => {
+                    const dayNum = i + 1;
+                    const cellDateStr = `${nextYear}-${String(nextMonthIdx + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+                    const isSelected = effectiveSelectedDate === cellDateStr;
+                    const isToday = cellDateStr === todayStr;
+
+                    return (
+                      <button
+                        key={`next-day-${dayNum}`}
+                        type="button"
+                        onClick={() => {
+                          selectCalendarDate(nextYear, nextMonthIdx, dayNum);
+                          setCalendarYear(nextYear);
+                          setCalendarMonth(nextMonthIdx);
+                        }}
+                        onDoubleClick={() => {
+                          selectCalendarDate(nextYear, nextMonthIdx, dayNum);
+                          setShowDatePicker(false);
+                        }}
+                        className={`h-8 rounded-lg text-xs font-medium transition-all flex items-center justify-center relative cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? 'bg-blue-600 text-white font-black shadow-lg shadow-blue-500/50 ring-2 ring-blue-400 scale-105 z-10'
+                            : isToday
+                            ? 'bg-blue-500/15 border border-blue-500/40 text-blue-400'
+                            : 'text-slate-600 hover:text-slate-300 hover:bg-slate-900/60'
+                        }`}
+                      >
+                        {dayNum}
+                        {isToday && !isSelected && (
+                          <span className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-400" />
+                        )}
+                      </button>
+                    );
+                  });
+                })()}
+              </div>
+
+              {/* Footer Quick Action Buttons */}
+              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2.5">
+                <button
+                  type="button"
+                  onClick={selectCalendarToday}
+                  className={`py-2 px-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center active:scale-95 ${
+                    effectiveSelectedDate === todayStr
+                      ? 'bg-blue-600/20 border-blue-500/60 text-blue-300 ring-1 ring-blue-500/40'
+                      : 'bg-slate-900 hover:bg-slate-800 border-slate-800 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Heute ({todayObj.getDate()}.{todayObj.getMonth() + 1}.)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleApplyDatePicker}
+                  className="flex-1 py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs uppercase tracking-wider shadow-md shadow-blue-600/20 active:scale-95 transition-all cursor-pointer text-center"
+                >
+                  Übernehmen
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

@@ -86,6 +86,7 @@ export default function App() {
     docType: type,
     kostenItems: [{ id: Date.now(), name: '', val: '' }],
     offerId: null,
+    offerDate: '',
     kunde: '',
     kundeAdresse: '',
     kundeStrasse: '',
@@ -924,6 +925,7 @@ export default function App() {
       kundePlzOrt: kitchen.kundePlzOrt?.trim() || '',
       beraterId: kitchen.beraterId,
       timestamp: Date.now(),
+      offerDate: kitchen.offerDate || '',
       totalVK: effectiveVK,
       kitchen: { ...kitchen, offerId: targetOfferId },
       parts: parts,
@@ -1168,6 +1170,7 @@ export default function App() {
         setKvKitchen({
           ...createDefaultKitchen('kostenvoranschlag', loadedBeraterId),
           ...o.kitchen,
+          offerDate: o.kitchen?.offerDate || o.offerDate || '',
           kundeAdresse: rawAdresse,
           kundeStrasse: loadedStrasse,
           kundePlzOrt: loadedPlzOrt,
@@ -1180,6 +1183,7 @@ export default function App() {
         setAngebotKitchen({
           ...createDefaultKitchen('angebot', loadedBeraterId),
           ...o.kitchen,
+          offerDate: o.kitchen?.offerDate || o.offerDate || '',
           kundeAdresse: rawAdresse,
           kundeStrasse: loadedStrasse,
           kundePlzOrt: loadedPlzOrt,
@@ -2300,6 +2304,11 @@ export default function App() {
                   ? userProfile.canUsePriceComparison
                   : (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin')
               }
+              canUseSanitas={
+                userProfile?.canUseSanitas !== undefined
+                  ? userProfile.canUseSanitas
+                  : (userProfile?.role === 'admin' || userProfile?.role === 'sys-admin')
+              }
               onNavigateAdmin={() => setActiveTab('admin')}
             />
           )}
@@ -2686,7 +2695,16 @@ export default function App() {
                                 })()}
 
                                 <div className="flex items-center gap-3 text-[10px] uppercase font-bold text-slate-400 tracking-widest leading-none mt-1">
-                                  <span>{new Date(off.timestamp).toLocaleDateString()}</span>
+                                  <span>
+                                    {(() => {
+                                      const d = off.offerDate || off.kitchen?.offerDate;
+                                      if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) {
+                                        const [yyyy, mm, dd] = d.split('-');
+                                        return `${dd}.${mm}.${yyyy}`;
+                                      }
+                                      return new Date(off.timestamp).toLocaleDateString('de-DE');
+                                    })()}
+                                  </span>
                                   <span>•</span>
                                   <span className="text-blue-500">{beraterName || 'Ohne Berater'}</span>
                                   <span>•</span>

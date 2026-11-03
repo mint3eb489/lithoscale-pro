@@ -148,6 +148,7 @@ export interface Kitchen {
   docType?: DocumentType;
   kostenItems?: KitchenItem[];
   offerId: string | null;
+  offerDate?: string; // Optional custom offer date in YYYY-MM-DD
   kunde: string;
   kundeAdresse?: string;
   kundeStrasse?: string;
@@ -186,6 +187,7 @@ export interface Offer {
   kundePlzOrt?: string;
   beraterId: string;
   timestamp: number;
+  offerDate?: string;
   totalVK: number;
   kitchen: Kitchen;
   parts: Part[];
@@ -215,6 +217,7 @@ export interface UserProfile {
     moebelFactor?: number; // Möbelfaktor
   };
   canUsePriceComparison?: boolean;
+  canUseSanitas?: boolean;
 }
 
 export interface SavedCalculation {

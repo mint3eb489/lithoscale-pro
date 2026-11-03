@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Stone, AppConfig, Berater, UserProfile, getBlancoChoiceArticleList, getStoneMaterial, StoneMaterialType, DEFAULTS } from '../types';
 import { resolveStoneImageUrl } from '../utils/imageUtils';
-import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown, Percent, Tag, PlusCircle, Check, ListPlus, Clock, Car } from 'lucide-react';
+import { Trash2, Plus, ArrowUpCircle, RefreshCw, Shield, User, Crown, ShieldAlert, X, Search, Cloud, Info, FileSpreadsheet, Cpu, Droplets, Layers, Sparkles, HelpCircle, ArrowRight, ArrowDown, Percent, Tag, PlusCircle, Check, ListPlus, Clock, Car, Calendar } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 interface AdminTabProps {
@@ -1849,7 +1849,7 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                           <Sparkles className="w-3 h-3 text-amber-500" />
                           <span>Beta-Funktionen & Freigaben</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <button
                             type="button"
                             disabled={cannotEdit}
@@ -1870,6 +1870,31 @@ export const AdminTab: React.FC<AdminTabProps> = ({
                             <span>Preis-Vergleich (Beta):</span>
                             <span className="font-black uppercase tracking-wider">
                               {(u.canUsePriceComparison !== undefined ? u.canUsePriceComparison : (u.role === 'admin' || u.role === 'sys-admin'))
+                                ? 'Aktiviert ✓'
+                                : 'Deaktiviert'}
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={cannotEdit}
+                            onClick={() => {
+                              const isCurrentlyEnabled = u.canUseSanitas !== undefined
+                                ? u.canUseSanitas
+                                : (u.role === 'admin' || u.role === 'sys-admin');
+                              onUpdateUserPermission && onUpdateUserPermission(u.id, 'canUseSanitas', !isCurrentlyEnabled);
+                            }}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                              (u.canUseSanitas !== undefined ? u.canUseSanitas : (u.role === 'admin' || u.role === 'sys-admin'))
+                                ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/25 shadow-xs'
+                                : 'bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-zinc-700 hover:text-slate-600 dark:hover:text-slate-300'
+                            }`}
+                            title="Schaltet die Kalender- und Datumsänderungs-Funktion (Sanitas) für diesen Benutzer frei"
+                          >
+                            <Calendar className="w-3 h-3" />
+                            <span>Sanitas:</span>
+                            <span className="font-black uppercase tracking-wider">
+                              {(u.canUseSanitas !== undefined ? u.canUseSanitas : (u.role === 'admin' || u.role === 'sys-admin'))
                                 ? 'Aktiviert ✓'
                                 : 'Deaktiviert'}
                             </span>

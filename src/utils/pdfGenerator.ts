@@ -177,11 +177,22 @@ export async function generateKitchenPDF(
 
     const beraterObj = findBeraterUser(k.beraterId, params.usersList || []);
 
-    const currentDateStr = new Intl.DateTimeFormat('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    }).format(new Date());
+    let offerDateStr = '';
+    if (k.offerDate && k.offerDate.trim() !== '') {
+      const raw = k.offerDate.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        const [yyyy, mm, dd] = raw.split('-');
+        offerDateStr = `${dd}.${mm}.${yyyy}`;
+      } else {
+        offerDateStr = raw;
+      }
+    } else {
+      offerDateStr = new Intl.DateTimeFormat('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).format(new Date());
+    }
 
     const strasseVal = (k.kundeStrasse || '').trim();
     const plzOrtVal = (k.kundePlzOrt || '').trim();
@@ -266,7 +277,7 @@ export async function generateKitchenPDF(
       {
         columns: [
           { text: '', width: '*' },
-          { text: `Datum: ${currentDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right', width: 'auto' }
+          { text: `Datum: ${offerDateStr}`, fontSize: 10, color: '#64748b', alignment: 'right', width: 'auto' }
         ],
         margin: [0, 0, 0, 10]
       },
