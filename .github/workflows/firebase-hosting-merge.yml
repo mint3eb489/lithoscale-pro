@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       - name: Set up Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
@@ -36,11 +36,11 @@ jobs:
             const fs = require("fs");
             const cfg = JSON.parse(fs.readFileSync("firebase.json", "utf8"));
             if (cfg.hosting && !Array.isArray(cfg.hosting) && !cfg.hosting.site && !cfg.hosting.target) {
-              cfg.hosting.site = "gen-lang-client-0447110538";
+              cfg.hosting.site = "lithoscalepro";
               fs.writeFileSync("firebase.json", JSON.stringify(cfg, null, 2) + "\n");
             }
             if (!fs.existsSync(".firebaserc")) {
-              fs.writeFileSync(".firebaserc", JSON.stringify({ projects: { default: "gen-lang-client-0447110538" } }, null, 2) + "\n");
+              fs.writeFileSync(".firebaserc", JSON.stringify({ projects: { default: "lithoscalepro" } }, null, 2) + "\n");
             }
           '
 
@@ -48,7 +48,6 @@ jobs:
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GEN_LANG_CLIENT_0447110538 }}
-          projectId: gen-lang-client-0447110538
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_LITHOSCALEPRO || secrets.FIREBASE_SERVICE_ACCOUNT_GEN_LANG_CLIENT_0447110538 }}
+          projectId: lithoscalepro
           channelId: live
-          firebaseToolsVersion: '12.9.1'
