@@ -30,6 +30,20 @@ jobs:
       - name: Build app
         run: npm run build
 
+      - name: Prepare Firebase config
+        run: |
+          node -e '
+            const fs = require("fs");
+            const cfg = JSON.parse(fs.readFileSync("firebase.json", "utf8"));
+            if (cfg.hosting && !Array.isArray(cfg.hosting) && !cfg.hosting.site && !cfg.hosting.target) {
+              cfg.hosting.site = "gen-lang-client-0447110538";
+              fs.writeFileSync("firebase.json", JSON.stringify(cfg, null, 2) + "\n");
+            }
+            if (!fs.existsSync(".firebaserc")) {
+              fs.writeFileSync(".firebaserc", JSON.stringify({ projects: { default: "gen-lang-client-0447110538" } }, null, 2) + "\n");
+            }
+          '
+
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
@@ -37,4 +51,4 @@ jobs:
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GEN_LANG_CLIENT_0447110538 }}
           projectId: gen-lang-client-0447110538
           channelId: live
-          firebaseToolsVersion: '15.34.0'
+          firebaseToolsVersion: '12.9.1'
